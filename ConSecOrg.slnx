@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ConSecOrg.Application/ConSecOrg.Application.csproj" />
+    <Project Path="src/ConSecOrg.Client/ConSecOrg.Client.csproj" />
+    <Project Path="src/ConSecOrg.Domain/ConSecOrg.Domain.csproj" />
+    <Project Path="src/ConSecOrg.Infrastructure/ConSecOrg.Infrastructure.csproj" />
+    <Project Path="src/ConSecOrg.Server/ConSecOrg.Server.csproj" />
+    <Project Path="src/ConSecOrg.Shared/ConSecOrg.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ConSecOrg.Application.Tests/ConSecOrg.Application.Tests.csproj" />
+    <Project Path="tests/ConSecOrg.Domain.Tests/ConSecOrg.Domain.Tests.csproj" />
+    <Project Path="tests/ConSecOrg.Infrastructure.Tests/ConSecOrg.Infrastructure.Tests.csproj" />
+    <Project Path="tests/ConSecOrg.Server.Tests/ConSecOrg.Server.Tests.csproj" />
+  </Folder>
+</Solution>

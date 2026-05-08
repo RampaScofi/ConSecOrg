@@ -1,0 +1,55 @@
+# Build outputs
+bin/
+obj/
+out/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# NuGet
+*.nupkg
+**/packages/
+!**/packages/build/
+.nuget/
+
+# EF Core migrations temp
+*.mdf
+*.ldf
+
+# User secrets (НИКОГДА не коммитить)
+**/secrets.json
+**/appsettings.Local.json
+
+# App data / local storage
+**/AppData/
+local_config.json
+task_meta.json
+note_meta.json
+projects.json
+
+# Logs
+logs/
+*.log
+Serilog*.txt
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Rider / JetBrains
+.idea/
+
+# Coverage
+coverage/
+*.coverage
+*.coveragexml
+TestResults/
+
+# Publish profiles
+PublishProfiles/
+Properties/PublishProfiles/

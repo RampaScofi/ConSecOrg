@@ -1,0 +1,27 @@
+<UserControl x:Class="ConSecOrg.Client.Controls.DestructionTimerWidget"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="44" Height="44"
+             ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=TooltipText}">
+
+    <Canvas Width="44" Height="44">
+        <!-- Background track ring -->
+        <Ellipse Canvas.Left="4" Canvas.Top="4" Width="36" Height="36"
+                 Stroke="#20808080" StrokeThickness="4" Fill="Transparent"/>
+
+        <!-- Progress arc (drawn in code-behind via PART_Arc) -->
+        <Path x:Name="PART_Arc"
+              StrokeThickness="4" Fill="Transparent"
+              StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+
+        <!-- Center text (Canvas.Top set in code-behind per label) -->
+        <TextBlock x:Name="PART_Text"
+                   Canvas.Left="0"
+                   Canvas.Top="15"
+                   Width="44"
+                   TextAlignment="Center"
+                   FontSize="9"
+                   FontWeight="Bold"
+                   TextOptions.TextFormattingMode="Display"/>
+    </Canvas>
+</UserControl>

@@ -1,0 +1,804 @@
+<UserControl x:Class="ConSecOrg.Client.Views.Reports.ReportsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:vm="clr-namespace:ConSecOrg.Client.ViewModels.Reports"
+             Loaded="OnLoaded">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Generic.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="TabBtn" TargetType="Button">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Padding" Value="18,10"/>
+                <Setter Property="FontSize" Value="13.5"/>
+                <Setter Property="Foreground" Value="{DynamicResource SecondaryForeground}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Active tab style -->
+            <Style x:Key="TabBtnActive" TargetType="Button" BasedOn="{StaticResource TabBtn}">
+                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="BorderThickness" Value="0,0,0,2"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Background="{DynamicResource AppContentBackground}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- Title -->
+            <RowDefinition Height="Auto"/>  <!-- Tab bar -->
+            <RowDefinition Height="*"/>     <!-- Content -->
+        </Grid.RowDefinitions>
+
+        <!-- Page title -->
+        <Border Grid.Row="0" Padding="28,18,28,0">
+            <TextBlock Text="Отчёты" FontSize="22" FontWeight="Bold"
+                       Foreground="{DynamicResource PrimaryForeground}"/>
+        </Border>
+
+        <!-- Tab bar -->
+        <Border Grid.Row="1" Padding="20,0,0,0"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal">
+
+                <Button Command="{Binding SetTabCommand}" CommandParameter="general">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource TabBtn}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedTab}" Value="general">
+                                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,2"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="ChartPie" Width="15" Height="15"
+                                                 Margin="0,0,7,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Общий" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Command="{Binding SetTabCommand}" CommandParameter="tables">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource TabBtn}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedTab}" Value="tables">
+                                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,2"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="TableLarge" Width="15" Height="15"
+                                                 Margin="0,0,7,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Таблицы" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Command="{Binding SetTabCommand}" CommandParameter="employees">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource TabBtn}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedTab}" Value="employees">
+                                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,2"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="AccountGroup" Width="15" Height="15"
+                                                 Margin="0,0,7,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Задачи сотрудников" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Command="{Binding SetTabCommand}" CommandParameter="time">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource TabBtn}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedTab}" Value="time">
+                                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,2"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="TimerOutline" Width="15" Height="15"
+                                                 Margin="0,0,7,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Время в колонках" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+            </StackPanel>
+        </Border>
+
+        <!-- ══════════════════════════════════════════════
+             TAB CONTENT
+        ══════════════════════════════════════════════ -->
+        <Grid Grid.Row="2">
+
+            <!-- ═══ ОБЩИЙ ═══ -->
+            <Grid Visibility="{Binding SelectedTab,
+                                Converter={StaticResource StringEqualityToVisibilityConverter},
+                                ConverterParameter=general}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Toolbar -->
+                <Border Grid.Row="0" Padding="24,12,24,12"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Command="{Binding SetGeneralGroupByCommand}" CommandParameter="projects" Margin="0,0,6,0">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource PillButton}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding GeneralGroupBy}" Value="projects">
+                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <TextBlock Text="По проектам"/>
+                            </Button>
+                            <Button Command="{Binding SetGeneralGroupByCommand}" CommandParameter="departments"
+                                    Margin="0,0,6,0" Style="{StaticResource PillButton}">
+                                <TextBlock Text="По отделам"/>
+                            </Button>
+                            <Button Command="{Binding SetGeneralGroupByCommand}" CommandParameter="people"
+                                    Style="{StaticResource PillButton}">
+                                <TextBlock Text="По людям"/>
+                            </Button>
+                        </StackPanel>
+
+                        <Button HorizontalAlignment="Right"
+                                Command="{Binding DownloadReportCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                materialDesign:ButtonAssist.CornerRadius="6"
+                                Height="32" Padding="12,0">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Download" Width="14" Height="14"
+                                                         Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Скачать отчёт" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Table -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24,0,24,24">
+                        <!-- Column headers -->
+                        <Grid Margin="0,16,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="200"/>
+                                <ColumnDefinition Width="200"/>
+                                <ColumnDefinition Width="160"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Проект" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SecondaryForeground}"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Открытых задач" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SecondaryForeground}" Margin="0,0,4,0"/>
+                                <materialDesign:PackIcon Kind="Cog" Width="12" Height="12"
+                                                         Foreground="{DynamicResource SecondaryForeground}" Opacity="0.5"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Выполненных задач" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SecondaryForeground}" Margin="0,0,4,0"/>
+                                <materialDesign:PackIcon Kind="Cog" Width="12" Height="12"
+                                                         Foreground="{DynamicResource SecondaryForeground}" Opacity="0.5"/>
+                            </StackPanel>
+                                <Button Grid.Column="3" Style="{StaticResource FlatIconButton}"
+                                    Command="{Binding AddColumnCommand}"
+                                    Padding="4,2">
+                                <TextBlock FontSize="12" Foreground="{DynamicResource AccentBrush}">+ Добавить колонку</TextBlock>
+                            </Button>
+                        </Grid>
+                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,0,0,4"/>
+
+                        <ItemsControl ItemsSource="{Binding GeneralRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:GeneralReportRow}">
+                                    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                                        <Grid Margin="0,12,0,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="200"/>
+                                                <ColumnDefinition Width="200"/>
+                                                <ColumnDefinition Width="160"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Name}" FontSize="14"
+                                                       Foreground="{DynamicResource PrimaryForeground}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding OpenTasks}"
+                                                       FontSize="14" FontWeight="Medium"
+                                                       Foreground="{DynamicResource AccentBrush}"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding CompletedTasks}"
+                                                       FontSize="14" FontWeight="Medium"
+                                                       Foreground="{DynamicResource AccentBrush}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- ═══ ТАБЛИЦЫ ═══ -->
+            <Grid Visibility="{Binding SelectedTab,
+                                Converter={StaticResource StringEqualityToVisibilityConverter},
+                                ConverterParameter=tables}">
+
+                <!-- Report list -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              Visibility="{Binding SelectedReport,
+                                           Converter={StaticResource NullToCollapsedConverter}}">
+                    <StackPanel Margin="24,16,24,24">
+                        <!-- Header row -->
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="160"/>
+                                <ColumnDefinition Width="180"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Название отчёта" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SecondaryForeground}"/>
+                            <TextBlock Grid.Column="1" Text="Открытых задач" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SecondaryForeground}"/>
+                            <TextBlock Grid.Column="2" Text="Выполненных задач" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SecondaryForeground}"/>
+                        </Grid>
+                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,0,0,4"/>
+
+                        <ItemsControl ItemsSource="{Binding SavedReports}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:SavedReport}">
+                                    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
+                                            Cursor="Hand">
+                                        <Border.InputBindings>
+                                            <MouseBinding MouseAction="LeftClick"
+                                                          Command="{Binding DataContext.OpenReportCommand,
+                                                                    RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          CommandParameter="{Binding}"/>
+                                        </Border.InputBindings>
+                                        <Grid Margin="0,12,0,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="160"/>
+                                                <ColumnDefinition Width="180"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="FileChartOutline"
+                                                                         Width="16" Height="16"
+                                                                         Foreground="{DynamicResource AccentBrush}"
+                                                                         Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Name}" FontSize="14"
+                                                           Foreground="{DynamicResource AccentBrush}"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="{Binding OpenTasks}"
+                                                       FontSize="14" Foreground="{DynamicResource PrimaryForeground}"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding CompletedTasks}"
+                                                       FontSize="14" Foreground="{DynamicResource PrimaryForeground}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Foreground="{DynamicResource AccentBrush}" FontSize="13"
+                                   Margin="0,16,0,0">+ Добавить отчёт</TextBlock>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Gantt view (when report selected) -->
+                <Grid Visibility="{Binding SelectedReport, Converter={StaticResource NullToVisibilityConverter}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/> <!-- Toolbar -->
+                        <RowDefinition Height="*"/>    <!-- Chart -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Gantt toolbar -->
+                    <Border Grid.Row="0" Padding="16,10"
+                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                        <Grid>
+                            <Button Command="{Binding CloseReportCommand}"
+                                    Style="{StaticResource FlatIconButton}" Padding="6,4" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="ArrowLeft" Width="14" Height="14"
+                                                             VerticalAlignment="Center" Margin="0,0,6,0"
+                                                             Foreground="{DynamicResource AccentBrush}"/>
+                                    <TextBlock Text="Вернуться к списку отчётов" FontSize="13"
+                                               Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Style="{StaticResource FlatIconButton}" Padding="6,4" Margin="0,0,8,0"
+                                        Command="{Binding ConfigureReportCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Cog" Width="14" Height="14"
+                                                                 Margin="0,0,5,0" VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource AccentBrush}"/>
+                                        <TextBlock Text="Настроить отчёт" FontSize="13"
+                                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding DownloadReportCommand}"
+                                        Style="{StaticResource FlatIconButton}" Padding="6,4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Download" Width="14" Height="14"
+                                                                 Margin="0,0,5,0" VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource SecondaryForeground}"/>
+                                        <TextBlock Text="Скачать отчёт" FontSize="13"
+                                                   Foreground="{DynamicResource SecondaryForeground}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Gantt timeline -->
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                        <Grid MinWidth="{Binding GanttTotalWidth}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="36"/>   <!-- Date headers -->
+                                <RowDefinition Height="Auto"/> <!-- Task rows -->
+                            </Grid.RowDefinitions>
+
+                            <!-- Date header strip -->
+                            <ItemsControl Grid.Row="0" ItemsSource="{Binding GanttDateHeaders}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:GanttDateHeader}">
+                                        <Border Width="42" Height="36"
+                                                BorderBrush="{DynamicResource BorderBrush}"
+                                                BorderThickness="0,0,1,1">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsWeekend}" Value="True">
+                                                            <Setter Property="Background" Value="#0DFF5252"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding Label}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       FontSize="12">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource SecondaryForeground}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsToday}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Task rows with Gantt bars -->
+                            <ItemsControl Grid.Row="1" ItemsSource="{Binding GanttTasks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:GanttTask}">
+                                        <Grid Height="52">
+                                            <!-- Vertical grid stripes (background) -->
+                                            <Canvas>
+                                                <!-- Today marker per row -->
+                                                <Rectangle Canvas.Left="{Binding DataContext.TodayLeft,
+                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                           Canvas.Top="0"
+                                                           Width="2" Height="52"
+                                                           Fill="{DynamicResource AccentBrush}" Opacity="0.25"/>
+
+                                                <!-- Task bar -->
+                                                <Border Canvas.Left="{Binding Left}"
+                                                        Canvas.Top="9"
+                                                        Width="{Binding BarWidth}" Height="34"
+                                                        CornerRadius="5"
+                                                        Background="{Binding Color,
+                                                                     Converter={StaticResource HexColorToBrushConverter}}"
+                                                        Opacity="0.88"
+                                                        ToolTip="{Binding Title}">
+                                                    <Grid Margin="8,0,4,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border Width="22" Height="22" CornerRadius="11"
+                                                                Background="#30FFFFFF"
+                                                                VerticalAlignment="Center" Margin="0,0,5,0">
+                                                            <TextBlock Text="{Binding Initials}"
+                                                                       Foreground="White" FontSize="9" FontWeight="Bold"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Title}"
+                                                                   Foreground="White" FontSize="11"
+                                                                   VerticalAlignment="Center"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                    </Grid>
+                                                </Border>
+                                            </Canvas>
+                                            <!-- Row border -->
+                                            <Border BorderBrush="{DynamicResource BorderBrush}"
+                                                    BorderThickness="0,0,0,1"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+                    </ScrollViewer>
+                </Grid>
+            </Grid>
+
+            <!-- ═══ ЗАДАЧИ СОТРУДНИКОВ ═══ -->
+            <Grid Visibility="{Binding SelectedTab,
+                                Converter={StaticResource StringEqualityToVisibilityConverter},
+                                ConverterParameter=employees}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24,16,24,24">
+                        <!-- Header -->
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="110"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="НАЗВАНИЕ ЗАДАЧИ" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SecondaryForeground}"/>
+                            <TextBlock Grid.Column="1" Text="ИСПОЛНИТЕЛЬ" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SecondaryForeground}"/>
+                            <TextBlock Grid.Column="2" Text="СТАТУС" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SecondaryForeground}"/>
+                            <TextBlock Grid.Column="3" Text="ПРИОРИТЕТ" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SecondaryForeground}"/>
+                            <TextBlock Grid.Column="4" Text="СОЗДАНО" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SecondaryForeground}"/>
+                            <TextBlock Grid.Column="5" Text="ДЕДЛАЙН" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SecondaryForeground}"/>
+                        </Grid>
+                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,0,0,4"/>
+
+                        <ItemsControl ItemsSource="{Binding EmployeeRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:EmployeeTaskRow}">
+                                    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                                        <Grid Margin="0,10,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="120"/>
+                                                <ColumnDefinition Width="120"/>
+                                                <ColumnDefinition Width="110"/>
+                                                <ColumnDefinition Width="100"/>
+                                                <ColumnDefinition Width="110"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Ellipse Width="13" Height="13" Margin="0,0,7,0"
+                                                             VerticalAlignment="Center">
+                                                        <Ellipse.Style>
+                                                            <Style TargetType="Ellipse">
+                                                                <Setter Property="Stroke" Value="{DynamicResource BorderBrush}"/>
+                                                                <Setter Property="StrokeThickness" Value="1.5"/>
+                                                                <Setter Property="Fill" Value="Transparent"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                                        <Setter Property="Fill" Value="#43A047"/>
+                                                                        <Setter Property="Stroke" Value="#43A047"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Ellipse.Style>
+                                                    </Ellipse>
+                                                    <TextBlock Text="{Binding Title}" FontSize="13"
+                                                               Foreground="{DynamicResource PrimaryForeground}"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding ProjectPath}" FontSize="11"
+                                                           Foreground="{DynamicResource SecondaryForeground}"
+                                                           Margin="20,2,0,0" Opacity="0.7"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+
+                                            <!-- Assignee -->
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                        VerticalAlignment="Center">
+                                                <Border Width="22" Height="22" CornerRadius="11"
+                                                        Background="{DynamicResource AccentAlpha2Brush}"
+                                                        Margin="0,0,6,0"
+                                                        Visibility="{Binding HasAssignee, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <TextBlock Text="{Binding AssignedToUsername,
+                                                                   Converter={StaticResource FirstLetterConverter}}"
+                                                               FontSize="10" FontWeight="Bold"
+                                                               Foreground="{DynamicResource AccentBrush}"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding AssignedToUsername}"
+                                                           FontSize="12" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource SecondaryForeground}"
+                                                           TextTrimming="CharacterEllipsis" MaxWidth="80"/>
+                                            </StackPanel>
+
+                                            <Border Grid.Column="2" CornerRadius="10" Padding="8,3"
+                                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                    Background="#18607D8B">
+                                                <TextBlock Text="{Binding StatusText}" FontSize="11"
+                                                           Foreground="{Binding StatusColor, Converter={StaticResource HexColorToBrushConverter}}"/>
+                                            </Border>
+
+                                            <Border Grid.Column="3" CornerRadius="10" Padding="8,3"
+                                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                    Background="#12607D8B">
+                                                <TextBlock Text="{Binding PriorityText}" FontSize="11"
+                                                           Foreground="{Binding PriorityColor, Converter={StaticResource HexColorToBrushConverter}}"/>
+                                            </Border>
+
+                                            <TextBlock Grid.Column="4"
+                                                       Text="{Binding CreatedAt, StringFormat=dd.MM.yyyy}"
+                                                       FontSize="12" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource SecondaryForeground}"/>
+
+                                            <Border Grid.Column="5" CornerRadius="10" Padding="8,3"
+                                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                    Background="#12607D8B"
+                                                    Visibility="{Binding DueDate, Converter={StaticResource NullToVisibilityConverter}}">
+                                                <TextBlock Text="{Binding DueDate, StringFormat=dd MMM}"
+                                                           FontSize="11" Foreground="{DynamicResource SecondaryForeground}"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- ═══ ВРЕМЯ В КОЛОНКАХ ═══ -->
+            <Grid Visibility="{Binding SelectedTab,
+                                Converter={StaticResource StringEqualityToVisibilityConverter},
+                                ConverterParameter=time}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Filter bar -->
+                <Border Grid.Row="0" Padding="24,14,24,14"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Проект / Доска:" FontSize="13"
+                                   Foreground="{DynamicResource SecondaryForeground}"
+                                   VerticalAlignment="Center" Margin="0,0,12,0"/>
+                        <ComboBox ItemsSource="{Binding Projects}"
+                                  SelectedItem="{Binding SelectedTimeProject}"
+                                  DisplayMemberPath="Name"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                  materialDesign:HintAssist.Hint="Все проекты"
+                                  materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                  Foreground="{DynamicResource PrimaryForeground}"
+                                  Width="190" Height="34" Margin="0,0,10,0"/>
+                        <ComboBox ItemsSource="{Binding TimeBoards}"
+                                  SelectedItem="{Binding SelectedTimeBoard}"
+                                  DisplayMemberPath="Name"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                  materialDesign:HintAssist.Hint="Все доски"
+                                  materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                  Foreground="{DynamicResource PrimaryForeground}"
+                                  Width="160" Height="34"/>
+                    </StackPanel>
+                </Border>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24,20,24,24">
+
+                        <!-- Chart title -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
+                            <TextBlock Text="Среднее время в колонках" FontSize="16" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource PrimaryForeground}"/>
+                            <materialDesign:PackIcon Kind="HelpCircleOutline" Width="16" Height="16"
+                                                     VerticalAlignment="Center" Margin="8,0,0,0"
+                                                     Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"/>
+                        </StackPanel>
+
+                        <!-- Bar chart -->
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/> <!-- Y-axis space -->
+                                <ColumnDefinition Width="Auto"/> <!-- Bars -->
+                            </Grid.ColumnDefinitions>
+
+                            <ItemsControl Grid.Column="1" ItemsSource="{Binding TimeHeaders}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:TimeColumnHeader}">
+                                        <StackPanel Width="130" Margin="4,0" VerticalAlignment="Bottom">
+                                            <!-- Bar -->
+                                            <Border CornerRadius="3,3,0,0" Width="64"
+                                                    HorizontalAlignment="Center"
+                                                    Height="{Binding BarHeightPixels}"
+                                                    Background="{Binding Color, Converter={StaticResource HexColorToBrushConverter}}"/>
+                                            <!-- Average label -->
+                                            <TextBlock Text="{Binding AverageTimeText}"
+                                                       HorizontalAlignment="Center" FontSize="11"
+                                                       Margin="0,5,0,4"
+                                                       Foreground="{DynamicResource SecondaryForeground}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+
+                        <!-- Column name labels -->
+                        <ItemsControl ItemsSource="{Binding TimeHeaders}" Margin="0,0,0,20">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:TimeColumnHeader}">
+                                    <TextBlock Text="{Binding Name}" Width="130" Margin="4,0"
+                                               TextAlignment="Center" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SecondaryForeground}"
+                                               TextWrapping="Wrap"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,0,0,12"/>
+
+                        <!-- Table header -->
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <!-- TimeHeaders columns rendered in code-behind -->
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="НАЗВАНИЕ ЗАДАЧИ" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SecondaryForeground}"/>
+                        </Grid>
+
+                        <!-- Task rows with time cells -->
+                        <ItemsControl ItemsSource="{Binding TimeRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:TimeColumnRow}">
+                                    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                                        <Grid Margin="0,8,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Task name -->
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse Width="13" Height="13" Margin="0,0,7,0"
+                                                         VerticalAlignment="Center">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Stroke" Value="{DynamicResource BorderBrush}"/>
+                                                            <Setter Property="StrokeThickness" Value="1.5"/>
+                                                            <Setter Property="Fill" Value="Transparent"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                                    <Setter Property="Fill" Value="#43A047"/>
+                                                                    <Setter Property="Stroke" Value="#43A047"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock Text="{Binding TaskTitle}" FontSize="12"
+                                                           Foreground="{DynamicResource PrimaryForeground}"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" MaxWidth="300"/>
+                                            </StackPanel>
+
+                                            <!-- Time cells -->
+                                            <ItemsControl Grid.Column="1" ItemsSource="{Binding Cells}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:TimeCell}">
+                                                        <Border Width="130" Padding="6,3" Margin="2,0"
+                                                                CornerRadius="4">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Background" Value="Transparent"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
+                                                                            <Setter Property="Background" Value="#22EF5350"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <TextBlock Text="{Binding Text}" FontSize="12"
+                                                                       VerticalAlignment="Center">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource SecondaryForeground}"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
+                                                                                <Setter Property="Foreground" Value="#EF5350"/>
+                                                                                <Setter Property="FontWeight" Value="Medium"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+        </Grid>
+    </Grid>
+</UserControl>

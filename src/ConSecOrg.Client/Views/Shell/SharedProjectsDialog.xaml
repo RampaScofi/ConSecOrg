@@ -1,0 +1,154 @@
+<Window x:Class="ConSecOrg.Client.Views.Shell.SharedProjectsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Совместные проекты"
+        Width="560" Height="500"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{DynamicResource SecondaryBackground}"
+        BorderBrush="{DynamicResource BorderBrush}"
+        BorderThickness="1"
+        TextElement.Foreground="{DynamicResource PrimaryForeground}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Generic.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="24,20,24,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0" Text="Совместные проекты"
+                   FontSize="17" FontWeight="SemiBold"
+                   Foreground="{DynamicResource PrimaryForeground}"
+                   Margin="0,0,0,16"/>
+
+        <!-- Create project row -->
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0"
+                     Text="{Binding NewProjectName, UpdateSourceTrigger=PropertyChanged}"
+                     materialDesign:HintAssist.Hint="Название нового проекта"
+                     materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                     Foreground="{DynamicResource PrimaryForeground}"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     FontSize="13"/>
+            <Button Grid.Column="2"
+                    Command="{Binding CreateProjectCommand}"
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    materialDesign:ButtonAssist.CornerRadius="8"
+                    Height="36" Padding="16,0"
+                    Content="Создать"/>
+        </Grid>
+
+        <!-- Join project row -->
+        <Grid Grid.Row="2" Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0"
+                     Text="{Binding JoinCode, UpdateSourceTrigger=PropertyChanged}"
+                     materialDesign:HintAssist.Hint="Код приглашения (вступить)"
+                     materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                     Foreground="{DynamicResource PrimaryForeground}"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     FontSize="13" CharacterCasing="Upper"/>
+            <Button Grid.Column="2"
+                    Command="{Binding JoinProjectCommand}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    materialDesign:ButtonAssist.CornerRadius="8"
+                    Height="36" Padding="16,0"
+                    Content="Вступить"/>
+        </Grid>
+
+        <!-- Project list -->
+        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Projects}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="8"
+                                Margin="0,0,0,8" Padding="14,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{Binding Name}"
+                                               FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource PrimaryForeground}"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                        <TextBlock Text="Код: "
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryForeground}"/>
+                                        <TextBlock Text="{Binding InviteCode}"
+                                                   FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource AccentBrush}"
+                                                   FontFamily="Consolas"/>
+                                        <Button Command="{Binding DataContext.CopyInviteCodeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource FlatIconButton}"
+                                                Padding="4,0" Margin="4,0,0,0"
+                                                ToolTip="Скопировать код">
+                                            <materialDesign:PackIcon Kind="ContentCopy" Width="13" Height="13"
+                                                                     Foreground="{DynamicResource SecondaryForeground}"/>
+                                        </Button>
+                                    </StackPanel>
+                                    <TextBlock FontSize="11" Foreground="{DynamicResource SecondaryForeground}" Margin="0,2,0,0">
+                                        <Run Text="Участников: "/>
+                                        <Run Text="{Binding Members.Count, Mode=OneWay}"/>
+                                        <Run Text=" · Владелец: "/>
+                                        <Run Text="{Binding OwnerUsername}"/>
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <Button Grid.Column="1"
+                                        Command="{Binding DataContext.DeleteProjectCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}"
+                                        Style="{StaticResource FlatIconButton}"
+                                        ToolTip="Удалить проект">
+                                    <materialDesign:PackIcon Kind="Delete" Width="16" Height="16"
+                                                             Foreground="#EF5350"/>
+                                </Button>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Status + Close -->
+        <Grid Grid.Row="4" Margin="0,10,0,0">
+            <TextBlock Text="{Binding StatusText}"
+                       FontSize="12" Foreground="{DynamicResource AccentBrush}"
+                       VerticalAlignment="Center"
+                       Visibility="{Binding StatusText, Converter={StaticResource NullToVisibilityConverter}}"/>
+            <Button HorizontalAlignment="Right"
+                    Command="{Binding CloseCommand}"
+                    IsCancel="True"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    materialDesign:ButtonAssist.CornerRadius="8"
+                    Height="36" Padding="20,0"
+                    Content="Закрыть"/>
+        </Grid>
+    </Grid>
+</Window>

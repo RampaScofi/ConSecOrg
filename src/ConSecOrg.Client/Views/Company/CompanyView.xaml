@@ -1,0 +1,323 @@
+<UserControl x:Class="ConSecOrg.Client.Views.Company.CompanyView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:vm="clr-namespace:ConSecOrg.Client.ViewModels.Company">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ConSecOrg.Client;component/Themes/Generic.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Background="{DynamicResource PrimaryBackground}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Padding="32,24,32,16"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Domain" Width="26" Height="26"
+                                                 Foreground="{DynamicResource AccentBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="Моя компания"
+                                   FontSize="22" FontWeight="Bold"
+                                   Foreground="{DynamicResource PrimaryForeground}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Margin="36,4,0,0"
+                               Foreground="{DynamicResource SecondaryForeground}"
+                               FontSize="12">
+                        <Run Text="Сервер: "/>
+                        <Run Text="{Binding ServerUrl, Mode=OneWay}" FontWeight="Medium"/>
+                        <Run Text="  ·  Роль: "/>
+                        <Run Text="{Binding CurrentRole, Mode=OneWay}" FontWeight="Medium"
+                             Foreground="{DynamicResource AccentBrush}"/>
+                    </TextBlock>
+                </StackPanel>
+                <!-- Status -->
+                <Border Grid.Column="1" CornerRadius="6" Padding="12,6"
+                        Background="{DynamicResource SecondaryBackground}"
+                        Visibility="{Binding StatusText, Converter={StaticResource NullToVisibilityConverter}}">
+                    <TextBlock Text="{Binding StatusText}"
+                               Foreground="{DynamicResource PrimaryForeground}"
+                               FontSize="12"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <Grid Margin="32,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="340"/>
+                    <ColumnDefinition Width="24"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- ─── Left panel: Create + Join ─── -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Top">
+
+                    <!-- Create project card -->
+                    <Border Background="{DynamicResource SecondaryBackground}"
+                            CornerRadius="12" Padding="20" Margin="0,0,0,16">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                                <materialDesign:PackIcon Kind="FolderPlus" Width="18" Height="18"
+                                                         Foreground="{DynamicResource AccentBrush}"
+                                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="Создать совместный проект"
+                                           FontSize="14" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource PrimaryForeground}"/>
+                            </StackPanel>
+                            <TextBox Text="{Binding NewProjectName, UpdateSourceTrigger=PropertyChanged}"
+                                     materialDesign:HintAssist.Hint="Название проекта"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Foreground="{DynamicResource PrimaryForeground}"
+                                     FontSize="13" Margin="0,0,0,12">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Enter" Command="{Binding CreateProjectCommand}"/>
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <Button Command="{Binding CreateProjectCommand}"
+                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                    Background="{DynamicResource AccentBrush}"
+                                    Foreground="White"
+                                    HorizontalAlignment="Left"
+                                    IsEnabled="{Binding IsCreating, Converter={StaticResource InverseBoolConverter}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Plus" Width="14" Height="14"
+                                                             VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Создать"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Join project card -->
+                    <Border Background="{DynamicResource SecondaryBackground}"
+                            CornerRadius="12" Padding="20">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                                <materialDesign:PackIcon Kind="AccountMultiplePlus" Width="18" Height="18"
+                                                         Foreground="#66BB6A"
+                                                         VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="Присоединиться к проекту"
+                                           FontSize="14" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource PrimaryForeground}"/>
+                            </StackPanel>
+                            <TextBlock Text="Введите код приглашения, который предоставил владелец проекта"
+                                       FontSize="11" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource SecondaryForeground}"
+                                       Margin="0,0,0,10"/>
+                            <TextBox Text="{Binding JoinCode, UpdateSourceTrigger=PropertyChanged}"
+                                     materialDesign:HintAssist.Hint="Код приглашения"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Foreground="{DynamicResource PrimaryForeground}"
+                                     CharacterCasing="Upper"
+                                     FontSize="13" Margin="0,0,0,12">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Enter" Command="{Binding JoinProjectCommand}"/>
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <Button Command="{Binding JoinProjectCommand}"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    HorizontalAlignment="Left"
+                                    Foreground="#66BB6A"
+                                    BorderBrush="#66BB6A"
+                                    IsEnabled="{Binding IsJoining, Converter={StaticResource InverseBoolConverter}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="AccountArrowRight" Width="14" Height="14"
+                                                             VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Присоединиться"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+
+                <!-- ─── Right panel: Projects list ─── -->
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                        <TextBlock Text="Совместные проекты"
+                                   FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource PrimaryForeground}"
+                                   VerticalAlignment="Center"/>
+                        <Border CornerRadius="10" Padding="8,2" Margin="10,0,0,0"
+                                Background="{DynamicResource AccentAlpha2Brush}">
+                            <TextBlock Text="{Binding Projects.Count}"
+                                       FontSize="11" FontWeight="Bold"
+                                       Foreground="{DynamicResource AccentBrush}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Loading -->
+                    <ProgressBar Grid.Row="1" Style="{StaticResource MaterialDesignCircularProgressBar}"
+                                 Width="36" Height="36" IsIndeterminate="True"
+                                 VerticalAlignment="Top" HorizontalAlignment="Center"
+                                 Margin="0,40,0,0"
+                                 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                    <!-- Empty state -->
+                    <StackPanel Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Center"
+                                Margin="0,60,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Projects.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <materialDesign:PackIcon Kind="FolderMultipleOutline" Width="52" Height="52"
+                                                 HorizontalAlignment="Center"
+                                                 Foreground="{DynamicResource SecondaryForeground}" Opacity="0.35"/>
+                        <TextBlock Text="Нет совместных проектов"
+                                   FontSize="15" HorizontalAlignment="Center" Margin="0,14,0,0"
+                                   Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"/>
+                        <TextBlock Text="Создайте новый или присоединитесь по коду"
+                                   FontSize="12" HorizontalAlignment="Center" Margin="0,6,0,0"
+                                   Foreground="{DynamicResource SecondaryForeground}" Opacity="0.4"/>
+                    </StackPanel>
+
+                    <!-- Projects grid -->
+                    <ItemsControl Grid.Row="1"
+                                  ItemsSource="{Binding Projects}"
+                                  Visibility="{Binding IsLoading, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource SecondaryBackground}"
+                                        CornerRadius="12" Padding="20" Margin="0,0,14,14"
+                                        Width="280" VerticalAlignment="Top">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="#000000" Opacity="0.08"
+                                                          BlurRadius="8" ShadowDepth="2"/>
+                                    </Border.Effect>
+                                    <StackPanel>
+                                        <!-- Project icon + name -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                            <Border Width="34" Height="34" CornerRadius="8"
+                                                    Background="{DynamicResource AccentAlpha2Brush}"
+                                                    Margin="0,0,10,0">
+                                                <materialDesign:PackIcon Kind="FolderAccount" Width="18" Height="18"
+                                                                         Foreground="{DynamicResource AccentBrush}"
+                                                                         HorizontalAlignment="Center"
+                                                                         VerticalAlignment="Center"/>
+                                            </Border>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontSize="14" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource PrimaryForeground}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           MaxWidth="180"/>
+                                                <TextBlock Text="{Binding OwnerUsername, StringFormat='Владелец: {0}'}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource SecondaryForeground}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Members -->
+                                        <TextBlock Text="{Binding Members.Count, StringFormat='Участников: {0}'}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource SecondaryForeground}"
+                                                   Margin="0,0,0,12"/>
+
+                                        <!-- Invite code box -->
+                                        <Border Background="{DynamicResource PrimaryBackground}"
+                                                CornerRadius="6" Padding="10,8" Margin="0,0,0,12">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="КОД ПРИГЛАШЕНИЯ"
+                                                               FontSize="10" FontWeight="Bold"
+                                                               Foreground="{DynamicResource SecondaryForeground}"
+                                                               Opacity="0.6"/>
+                                                    <TextBlock Text="{Binding InviteCode}"
+                                                               FontSize="18" FontWeight="Bold"
+                                                               Foreground="{DynamicResource AccentBrush}"
+                                                               FontFamily="Consolas"/>
+                                                </StackPanel>
+                                                <Button Grid.Column="1"
+                                                        Style="{StaticResource FlatIconButton}"
+                                                        Width="32" Height="32"
+                                                        Command="{Binding DataContext.CopyInviteCodeCommand,
+                                                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="Скопировать">
+                                                    <materialDesign:PackIcon Kind="ContentCopy" Width="15" Height="15"
+                                                                             Foreground="{DynamicResource SecondaryForeground}"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Action buttons -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Button Grid.Column="0"
+                                                    HorizontalAlignment="Left"
+                                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                                    Padding="14,4"
+                                                    Command="{Binding DataContext.OpenProjectCommand,
+                                                              RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="OpenInNew" Width="14" Height="14"
+                                                                             VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="Открыть" FontSize="12"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Grid.Column="1" Style="{StaticResource FlatIconButton}"
+                                                    HorizontalAlignment="Right"
+                                                    Padding="8,4"
+                                                    Command="{Binding DataContext.DeleteProjectCommand,
+                                                              RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="TrashCanOutline" Width="13" Height="13"
+                                                                             Foreground="#EF5350" VerticalAlignment="Center"
+                                                                             Margin="0,0,4,0"/>
+                                                    <TextBlock Text="Удалить" FontSize="11" Foreground="#EF5350"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

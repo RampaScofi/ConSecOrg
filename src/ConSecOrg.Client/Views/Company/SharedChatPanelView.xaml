@@ -1,0 +1,281 @@
+<UserControl x:Class="ConSecOrg.Client.Views.Company.SharedChatPanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+             xmlns:vm="clr-namespace:ConSecOrg.Client.ViewModels.Company"
+             d:DataContext="{d:DesignInstance Type=vm:SharedChatPanelViewModel}"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <Grid Background="{DynamicResource SecondaryBackground}"
+          Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Padding="16,12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Style="{StaticResource MaterialDesignIconButton}"
+                        Width="28" Height="28" Padding="0"
+                        Command="{Binding BackToListCommand}"
+                        Visibility="{Binding ShowingChatList, Converter={StaticResource InvertedBoolToVisibilityConverter}}"
+                        ToolTip="К списку чатов">
+                    <iconPacks:PackIconMaterial Kind="ArrowLeft" Width="14" Height="14"/>
+                </Button>
+                <TextBlock Grid.Column="1" Text="{Binding Title}" Margin="8,0,0,0"
+                           FontWeight="SemiBold" FontSize="14"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource PrimaryForeground}"
+                           TextTrimming="CharacterEllipsis"/>
+                <Button Grid.Column="2" Style="{StaticResource MaterialDesignIconButton}"
+                        Width="28" Height="28" Padding="0"
+                        Command="{Binding CloseCommand}" ToolTip="Закрыть">
+                    <iconPacks:PackIconMaterial Kind="Close" Width="14" Height="14"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Chat list mode -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                      Visibility="{Binding ShowingChatList, Converter={StaticResource BoolToVisibilityConverter}}">
+            <ItemsControl ItemsSource="{Binding AllChats}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="14,12" Cursor="Hand"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                            <Border.InputBindings>
+                                <MouseBinding MouseAction="LeftClick"
+                                    Command="{Binding DataContext.OpenChatFromListCommand,
+                                        RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"/>
+                            </Border.InputBindings>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Width="38" Height="38" CornerRadius="19"
+                                        Background="{DynamicResource AccentBrush}">
+                                    <iconPacks:PackIconMaterial Width="18" Height="18" Foreground="White"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <iconPacks:PackIconMaterial.Style>
+                                            <Style TargetType="iconPacks:PackIconMaterial">
+                                                <Setter Property="Kind" Value="AccountCircle"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ChatType}" Value="project">
+                                                        <Setter Property="Kind" Value="FolderAccount"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </iconPacks:PackIconMaterial.Style>
+                                    </iconPacks:PackIconMaterial>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource PrimaryForeground}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock FontSize="11" Margin="0,2,0,0"
+                                               Foreground="{DynamicResource SecondaryForeground}"
+                                               TextTrimming="CharacterEllipsis">
+                                        <Run Text="{Binding LastSenderUsername, Mode=OneWay}"/>
+                                        <Run Text=": "/>
+                                        <Run Text="{Binding LastMessageText, Mode=OneWay}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" VerticalAlignment="Top"
+                                           FontSize="10"
+                                           Foreground="{DynamicResource SecondaryForeground}"
+                                           Text="{Binding LastMessageAt, StringFormat='HH:mm', FallbackValue=''}"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Messages mode -->
+        <ScrollViewer x:Name="MessagesScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                      Padding="12"
+                      Visibility="{Binding ShowingChatList, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+            <ItemsControl ItemsSource="{Binding Messages}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <!-- Avatar -->
+                            <Border Grid.Column="0" Width="28" Height="28" CornerRadius="14"
+                                    Background="{DynamicResource AccentBrush}"
+                                    VerticalAlignment="Top" Margin="0,0,8,0"
+                                    Visibility="{Binding IsMine, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                                <TextBlock Text="{Binding SenderLetter}" Foreground="White"
+                                           FontWeight="Bold" FontSize="12"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <Border Grid.Column="1" CornerRadius="10" Padding="10,6"
+                                    HorizontalAlignment="Left" MaxWidth="300">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="{DynamicResource CardBackground}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsMine}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource AccentAlpha2Brush}"/>
+                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding SenderUsername}"
+                                               FontSize="10" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               Visibility="{Binding IsMine, Converter={StaticResource InvertedBoolToVisibilityConverter}}"/>
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource PrimaryForeground}"/>
+                                    <!-- Image attachment -->
+                                    <Image MaxWidth="260" MaxHeight="200" Margin="0,4,0,0"
+                                           Stretch="Uniform"
+                                           Visibility="{Binding IsImageAttachment, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <Image.Source>
+                                            <Binding Path="AttachmentUrl"
+                                                     Converter="{StaticResource ImagePathConverter}"/>
+                                        </Image.Source>
+                                    </Image>
+                                    <!-- File attachment (non-image) -->
+                                    <Border Background="{DynamicResource NavActiveBackground}"
+                                            CornerRadius="4" Padding="8,4" Margin="0,4,0,0"
+                                            Visibility="{Binding HasAttachment, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding HasAttachment}" Value="True"/>
+                                                            <Condition Binding="{Binding IsImageAttachment}" Value="False"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel Orientation="Horizontal">
+                                            <iconPacks:PackIconMaterial Kind="FileOutline" Width="14" Height="14"
+                                                                         VerticalAlignment="Center" Margin="0,0,6,0"
+                                                                         Foreground="{DynamicResource AccentBrush}"/>
+                                            <TextBlock Text="{Binding AttachmentFileName}"
+                                                       FontSize="11" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource AccentBrush}"
+                                                       TextDecorations="Underline"
+                                                       Cursor="Hand"
+                                                       TextTrimming="CharacterEllipsis" MaxWidth="200"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBlock Text="{Binding TimeDisplay}" FontSize="9"
+                                               HorizontalAlignment="Right" Margin="0,2,0,0"
+                                               Foreground="{DynamicResource SecondaryForeground}"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Messages mode — updated template with attachment support -->
+        <!-- Input -->
+        <Border Grid.Row="2" Padding="8,8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"
+                Visibility="{Binding ShowingChatList, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Emoji picker popup -->
+                <Popup Grid.Row="0" IsOpen="{Binding IsEmojiPickerOpen}" StaysOpen="False"
+                       Placement="Top" PlacementTarget="{Binding ElementName=EmojiBtn}">
+                    <Border Background="{DynamicResource SecondaryBackground}"
+                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                            CornerRadius="8" Padding="8" MaxWidth="280" MaxHeight="220">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding Source={x:Static vm:SharedChatPanelViewModel.CommonEmojis}}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Width="32" Height="32" Padding="0"
+                                                Content="{Binding}"
+                                                FontSize="18"
+                                                Foreground="{DynamicResource PrimaryForeground}"
+                                                Background="Transparent" BorderThickness="0"
+                                                Cursor="Hand"
+                                                Command="{Binding DataContext.InsertEmojiCommand, RelativeSource={RelativeSource AncestorType=Border}}"
+                                                CommandParameter="{Binding}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </Popup>
+
+                <!-- Input row -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Emoji button -->
+                    <Button Grid.Column="0" x:Name="EmojiBtn"
+                            Style="{StaticResource MaterialDesignIconButton}"
+                            Width="34" Height="34" Padding="0"
+                            Command="{Binding ToggleEmojiPickerCommand}"
+                            ToolTip="Смайлики">
+                        <TextBlock Text="😊" FontSize="18" VerticalAlignment="Center"/>
+                    </Button>
+
+                    <!-- Attach file button -->
+                    <Button Grid.Column="1"
+                            Style="{StaticResource MaterialDesignIconButton}"
+                            Width="34" Height="34" Padding="0" Margin="2,0,4,0"
+                            Command="{Binding AttachFileCommand}"
+                            ToolTip="Прикрепить файл">
+                        <iconPacks:PackIconMaterial Kind="Paperclip" Width="16" Height="16"/>
+                    </Button>
+
+                    <TextBox Grid.Column="2"
+                             Text="{Binding NewMessage, UpdateSourceTrigger=PropertyChanged}"
+                             md:HintAssist.Hint="Сообщение... (Enter — отправить)"
+                             md:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             Foreground="{DynamicResource PrimaryForeground}">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SendMessageCommand}"/>
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <Button Grid.Column="3" Margin="6,0,0,0"
+                            Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                            Command="{Binding SendMessageCommand}" ToolTip="Отправить">
+                        <iconPacks:PackIconMaterial Kind="Send" Width="14" Height="14"/>
+                    </Button>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

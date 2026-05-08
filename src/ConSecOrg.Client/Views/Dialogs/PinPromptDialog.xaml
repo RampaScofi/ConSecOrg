@@ -1,0 +1,94 @@
+<Window x:Class="ConSecOrg.Client.Views.Dialogs.PinPromptDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title=""
+        Width="420" SizeToContent="Height"
+        WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Generic.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Border CornerRadius="14"
+            Background="{DynamicResource SecondaryBackground}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1"
+            Padding="28,24,28,22">
+        <Border.Effect>
+            <DropShadowEffect Color="#000" Opacity="0.35" BlurRadius="28" ShadowDepth="6" Direction="270"/>
+        </Border.Effect>
+
+        <StackPanel>
+            <!-- Иконка + заголовок -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                <Border Width="42" Height="42" CornerRadius="21" Margin="0,0,14,0"
+                        Background="{DynamicResource AccentAlphaBrush}">
+                    <materialDesign:PackIcon Kind="LockOutline"
+                                             Width="22" Height="22"
+                                             Foreground="{DynamicResource AccentBrush}"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="TitleText"
+                               FontSize="16" FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryForeground}"/>
+                    <TextBlock x:Name="SubtitleText"
+                               FontSize="11"
+                               Foreground="{DynamicResource SecondaryForeground}"
+                               Margin="0,2,0,0"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- PIN ввод -->
+            <PasswordBox x:Name="PinBox"
+                         Style="{StaticResource MaterialDesignOutlinedPasswordBox}"
+                         materialDesign:HintAssist.Hint="PIN-код"
+                         materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                         Foreground="{DynamicResource PrimaryForeground}"
+                         CaretBrush="{DynamicResource PrimaryForeground}"
+                         FontSize="15"
+                         KeyDown="PinBox_KeyDown"
+                         Margin="0,0,0,8"/>
+
+            <!-- Ошибка -->
+            <TextBlock x:Name="ErrorText"
+                       Foreground="#EF5350" FontSize="12"
+                       Visibility="Collapsed"
+                       Margin="0,0,0,12"/>
+
+            <!-- Кнопки -->
+            <Grid Margin="0,12,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        materialDesign:ButtonAssist.CornerRadius="8"
+                        Content="Отмена"
+                        Height="40" FontSize="14"
+                        Click="CancelBtn_Click"
+                        IsCancel="True"/>
+
+                <Button Grid.Column="2"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        materialDesign:ButtonAssist.CornerRadius="8"
+                        Content="Подтвердить"
+                        Height="40" FontSize="14"
+                        Click="ConfirmBtn_Click"
+                        IsDefault="True"/>
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

@@ -1,0 +1,540 @@
+<UserControl x:Class="ConSecOrg.Client.Views.Notes.NotesListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:ctrl="clr-namespace:ConSecOrg.Client.Controls"
+             Background="{DynamicResource PrimaryBackground}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ── Header bar ── -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource SecondaryBackground}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="24,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Заметки" Style="{StaticResource PageTitle}"/>
+                    <Border Background="{DynamicResource AccentAlphaBrush}" CornerRadius="10"
+                            Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Notes.Count}"
+                                   FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}"/>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Search -->
+                    <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             materialDesign:HintAssist.Hint="Поиск..."
+                             materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                             materialDesign:HintAssist.IsFloating="False"
+                             materialDesign:TextFieldAssist.HasClearButton="True"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             Foreground="{DynamicResource PrimaryForeground}"
+                             CaretBrush="{DynamicResource PrimaryForeground}"
+                             Width="240" FontSize="13" Height="40" Margin="0,0,10,0"
+                             Padding="10,8"
+                             VerticalContentAlignment="Center">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SearchCommand}"/>
+                        </TextBox.InputBindings>
+                    </TextBox>
+
+                    <!-- View toggle -->
+                    <Button Style="{StaticResource FlatIconButton}"
+                            Command="{Binding ToggleViewModeCommand}"
+                            Width="36" Height="36" Margin="0,0,8,0"
+                            ToolTip="Переключить вид">
+                        <materialDesign:PackIcon Width="18" Height="18"
+                                                 Foreground="{DynamicResource SecondaryForeground}">
+                            <materialDesign:PackIcon.Style>
+                                <Style TargetType="materialDesign:PackIcon">
+                                    <Setter Property="Kind" Value="ViewGridOutline"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsListView}" Value="True">
+                                            <Setter Property="Kind" Value="ViewListOutline"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </materialDesign:PackIcon.Style>
+                        </materialDesign:PackIcon>
+                    </Button>
+
+                    <!-- Create -->
+                    <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                            Command="{Binding CreateNoteCommand}"
+                            materialDesign:ButtonAssist.CornerRadius="8"
+                            Height="36">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Plus" Width="16" Height="16" Margin="0,0,6,0"/>
+                            <TextBlock Text="Создать" FontSize="13"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ── Sort + Filter bar ── -->
+        <Border Grid.Row="1"
+                Background="{DynamicResource PrimaryBackground}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="20,8,20,8">
+            <StackPanel>
+                <!-- Sort row -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                    <TextBlock Text="Сортировка:" FontSize="12"
+                               Foreground="{DynamicResource SecondaryForeground}"
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <Button Margin="0,0,4,0" Command="{Binding SetSortCommand}" CommandParameter="date_desc">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PillButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SortMode}" Value="date_desc">
+                                        <Setter Property="Background" Value="{DynamicResource AccentAlphaBrush}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <TextBlock Text="Новые"/>
+                    </Button>
+                    <Button Margin="0,0,4,0" Command="{Binding SetSortCommand}" CommandParameter="date_asc">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PillButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SortMode}" Value="date_asc">
+                                        <Setter Property="Background" Value="{DynamicResource AccentAlphaBrush}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <TextBlock Text="Старые"/>
+                    </Button>
+                    <Button Margin="0,0,4,0" Command="{Binding SetSortCommand}" CommandParameter="title">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PillButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SortMode}" Value="title">
+                                        <Setter Property="Background" Value="{DynamicResource AccentAlphaBrush}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <TextBlock Text="A–Я"/>
+                    </Button>
+                    <Button Command="{Binding SetSortCommand}" CommandParameter="security">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PillButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SortMode}" Value="security">
+                                        <Setter Property="Background" Value="{DynamicResource AccentAlphaBrush}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <TextBlock Text="Уровень ↓"/>
+                    </Button>
+                </StackPanel>
+
+                <!-- Filter row -->
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Фильтр:" FontSize="12"
+                               Foreground="{DynamicResource SecondaryForeground}"
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+
+                    <!-- Public -->
+                    <Button Margin="0,0,4,0" Command="{Binding SetSecurityFilterCommand}" CommandParameter="Public">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PillButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SecurityLevelFilter}" Value="Public">
+                                        <Setter Property="Background" Value="#1A4CAF50"/>
+                                        <Setter Property="BorderBrush" Value="#4CAF50"/>
+                                        <Setter Property="Foreground" Value="#4CAF50"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="7" Height="7" Fill="#4CAF50" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Публичный"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Internal -->
+                    <Button Margin="0,0,4,0" Command="{Binding SetSecurityFilterCommand}" CommandParameter="Internal">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PillButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SecurityLevelFilter}" Value="Internal">
+                                        <Setter Property="Background" Value="#1A2196F3"/>
+                                        <Setter Property="BorderBrush" Value="#2196F3"/>
+                                        <Setter Property="Foreground" Value="#2196F3"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="7" Height="7" Fill="#2196F3" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Внутренний"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Confidential -->
+                    <Button Margin="0,0,4,0" Command="{Binding SetSecurityFilterCommand}" CommandParameter="Confidential">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PillButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SecurityLevelFilter}" Value="Confidential">
+                                        <Setter Property="Background" Value="#1AFF9800"/>
+                                        <Setter Property="BorderBrush" Value="#FF9800"/>
+                                        <Setter Property="Foreground" Value="#FF9800"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="7" Height="7" Fill="#FF9800" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Конфиденциальный"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Secret -->
+                    <Button Margin="0,0,4,0" Command="{Binding SetSecurityFilterCommand}" CommandParameter="Secret">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PillButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SecurityLevelFilter}" Value="Secret">
+                                        <Setter Property="Background" Value="#1AF44336"/>
+                                        <Setter Property="BorderBrush" Value="#F44336"/>
+                                        <Setter Property="Foreground" Value="#F44336"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="7" Height="7" Fill="#F44336" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Секрет"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Has timer -->
+                    <Button Margin="0,0,4,0" Command="{Binding ToggleTimerFilterCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PillButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding FilterHasTimer}" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource AccentAlphaBrush}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="TimerOutline" Width="13" Height="13"
+                                                     Margin="0,0,4,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="С таймером"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Clear filters (shown only when filter active) -->
+                    <Button Command="{Binding ClearFiltersCommand}"
+                            Visibility="{Binding HasActiveFilter, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PillButton}">
+                                <Setter Property="BorderBrush" Value="#EF5350"/>
+                                <Setter Property="Foreground" Value="#EF5350"/>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Close" Width="12" Height="12"
+                                                     Margin="0,0,4,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Сбросить"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- ── Notes content area ── -->
+        <Grid Grid.Row="2" TextElement.Foreground="{DynamicResource PrimaryForeground}">
+
+            <!-- CARD GRID VIEW -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,14,20,20"
+                          Visibility="{Binding IsListView, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                <ItemsControl ItemsSource="{Binding Notes}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Width="280" Margin="0,0,14,14"
+                                    Style="{StaticResource NoteCard}">
+                                <Border.InputBindings>
+                                    <MouseBinding MouseAction="LeftClick"
+                                                  Command="{Binding DataContext.OpenNoteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                  CommandParameter="{Binding}"/>
+                                    <MouseBinding MouseAction="LeftDoubleClick"
+                                                  Command="{Binding DataContext.EditNoteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                  CommandParameter="{Binding}"/>
+                                </Border.InputBindings>
+
+                                <Grid Margin="14,12">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="52"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Title + security badge -->
+                                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Title}"
+                                                   FontWeight="SemiBold" FontSize="14"
+                                                   Foreground="{DynamicResource PrimaryForeground}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <Border Grid.Column="1"
+                                                Background="{Binding SecurityLevel, Converter={StaticResource SecurityLevelToColorConverter}}"
+                                                CornerRadius="4" Padding="6,2" Margin="8,0,0,0">
+                                            <TextBlock Text="{Binding SecurityLevel, Converter={StaticResource SecurityLevelToRussianConverter}}"
+                                                       FontSize="10" FontWeight="SemiBold" Foreground="White"/>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- Content preview (скрыт для Confidential/Secret) -->
+                                    <Grid Grid.Row="1">
+                                        <TextBlock Text="{Binding Content}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource SecondaryForeground}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   TextWrapping="Wrap">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SecurityLevel}" Value="Confidential">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding SecurityLevel}" Value="Secret">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+
+                                        <!-- Заглушка для скрытого содержимого -->
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                                    HorizontalAlignment="Left">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SecurityLevel}" Value="Confidential">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding SecurityLevel}" Value="Secret">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <materialDesign:PackIcon Kind="LockOutline" Width="14" Height="14"
+                                                                     Foreground="{DynamicResource SecondaryForeground}"
+                                                                     VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                            <TextBlock Text="Содержимое скрыто. Нажмите чтобы открыть."
+                                                       FontSize="11" FontStyle="Italic"
+                                                       Foreground="{DynamicResource SecondaryForeground}"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Footer -->
+                                    <Grid Grid.Row="2" Margin="0,8,0,0">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <materialDesign:PackIcon Kind="ClockOutline" Width="13" Height="13"
+                                                                     Foreground="{DynamicResource SecondaryForeground}"
+                                                                     Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding UpdatedAt, Converter={StaticResource DateTimeToRelativeConverter}}"
+                                                       FontSize="11" Foreground="{DynamicResource SecondaryForeground}"
+                                                       VerticalAlignment="Center"/>
+                                            <!-- Destruction timer widget — circular countdown when ExpiresAt set -->
+                                            <ctrl:DestructionTimerWidget
+                                                ExpiresAt="{Binding ExpiresAt}"
+                                                Margin="6,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Visibility="{Binding ExpiresAt, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <Button Style="{StaticResource FlatIconButton}"
+                                                    Command="{Binding DataContext.EditNoteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Width="28" Height="28" Margin="0,0,2,0" ToolTip="Редактировать">
+                                                <materialDesign:PackIcon Kind="Pencil" Width="14" Height="14"
+                                                                         Foreground="{DynamicResource SecondaryForeground}"/>
+                                            </Button>
+                                            <Button Style="{StaticResource FlatIconButton}"
+                                                    Command="{Binding DataContext.DeleteNoteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Width="28" Height="28" ToolTip="Удалить">
+                                                <materialDesign:PackIcon Kind="Delete" Width="14" Height="14" Foreground="#EF5350"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- LIST VIEW -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,10,20,20"
+                          Visibility="{Binding IsListView, Converter={StaticResource BoolToVisibilityConverter}}">
+                <ItemsControl ItemsSource="{Binding Notes}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,6" CornerRadius="8"
+                                    Background="{DynamicResource CardBackground}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="1" Cursor="Hand" Padding="14,10">
+                                <Border.InputBindings>
+                                    <MouseBinding MouseAction="LeftClick"
+                                                  Command="{Binding DataContext.OpenNoteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                  CommandParameter="{Binding}"/>
+                                    <MouseBinding MouseAction="LeftDoubleClick"
+                                                  Command="{Binding DataContext.EditNoteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                  CommandParameter="{Binding}"/>
+                                </Border.InputBindings>
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="90"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ctrl:DestructionTimerWidget
+                                            ExpiresAt="{Binding ExpiresAt}"
+                                            Width="28" Height="28" Margin="0,0,4,0"
+                                            VerticalAlignment="Center"
+                                            Visibility="{Binding ExpiresAt, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                        <TextBlock Text="{Binding Title}"
+                                                   FontWeight="Medium" FontSize="13"
+                                                   Foreground="{DynamicResource PrimaryForeground}"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <Border Grid.Column="1"
+                                            Background="{Binding SecurityLevel, Converter={StaticResource SecurityLevelToColorConverter}}"
+                                            CornerRadius="4" Padding="6,2" Margin="10,0"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding SecurityLevel, Converter={StaticResource SecurityLevelToRussianConverter}}"
+                                                   FontSize="10" FontWeight="SemiBold" Foreground="White"/>
+                                    </Border>
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding UpdatedAt, Converter={StaticResource DateTimeToRelativeConverter}}"
+                                               FontSize="11" Foreground="{DynamicResource SecondaryForeground}"
+                                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button Style="{StaticResource FlatIconButton}"
+                                                Command="{Binding DataContext.EditNoteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"
+                                                Width="28" Height="28" Margin="0,0,2,0" ToolTip="Редактировать">
+                                            <materialDesign:PackIcon Kind="Pencil" Width="14" Height="14"
+                                                                     Foreground="{DynamicResource SecondaryForeground}"/>
+                                        </Button>
+                                        <Button Style="{StaticResource FlatIconButton}"
+                                                Command="{Binding DataContext.DeleteNoteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"
+                                                Width="28" Height="28" ToolTip="Удалить">
+                                            <materialDesign:PackIcon Kind="Delete" Width="14" Height="14" Foreground="#EF5350"/>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- Loading overlay -->
+            <Grid Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Border Background="{DynamicResource PrimaryBackground}" Opacity="0.6"/>
+                <ProgressBar IsIndeterminate="True" VerticalAlignment="Center"
+                             HorizontalAlignment="Center" Width="200" Height="4"/>
+            </Grid>
+
+            <!-- Empty state -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding Notes.Count}" Value="0"/>
+                                    <Condition Binding="{Binding IsBusy}" Value="False"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <materialDesign:PackIcon Kind="NoteTextOutline" Width="64" Height="64"
+                                         Foreground="{DynamicResource BorderBrush}"
+                                         HorizontalAlignment="Center"/>
+                <TextBlock Text="Заметок пока нет" FontSize="16"
+                           Foreground="{DynamicResource SecondaryForeground}"
+                           HorizontalAlignment="Center" Margin="0,12,0,4"/>
+                <TextBlock Text="Нажмите «Создать» чтобы добавить первую заметку"
+                           FontSize="13" Foreground="{DynamicResource SecondaryForeground}"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,199 @@
+<UserControl x:Class="ConSecOrg.Client.Views.Audit.AuditLogView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             Background="{DynamicResource PrimaryBackground}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource SecondaryBackground}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="24,14">
+            <Grid>
+                <TextBlock Text="Журнал аудита" Style="{StaticResource PageTitle}" Margin="0"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Command="{Binding VerifyChainCommand}"
+                            Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <md:PackIcon Kind="ShieldSearch" Width="18" Height="18" Margin="0,0,6,0"/>
+                            <TextBlock Text="Проверить цепочку"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Command="{Binding ExportCsvCommand}"
+                            Margin="0,0,8,0"
+                            ToolTip="Экспортировать журнал в CSV">
+                        <StackPanel Orientation="Horizontal">
+                            <md:PackIcon Kind="FileDownload" Width="18" Height="18" Margin="0,0,6,0"/>
+                            <TextBlock Text="Экспорт CSV"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                            Command="{Binding LoadCommand}">
+                        <md:PackIcon Kind="Refresh" Width="18" Height="18"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Filter bar -->
+        <Border Grid.Row="1"
+                Background="{DynamicResource SecondaryBackground}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="24,10">
+            <StackPanel Orientation="Horizontal">
+                <!-- From date -->
+                <DatePicker SelectedDate="{Binding FilterFrom}"
+                            md:HintAssist.Hint="С даты"
+                            md:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                            Foreground="{DynamicResource PrimaryForeground}"
+                            Style="{StaticResource MaterialDesignOutlinedDatePicker}"
+                            Width="160" Margin="0,0,12,0"/>
+                <!-- To date -->
+                <DatePicker SelectedDate="{Binding FilterTo}"
+                            md:HintAssist.Hint="По дату"
+                            md:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                            Foreground="{DynamicResource PrimaryForeground}"
+                            Style="{StaticResource MaterialDesignOutlinedDatePicker}"
+                            Width="160" Margin="0,0,12,0"/>
+                <!-- Action filter -->
+                <ComboBox ItemsSource="{Binding ActionOptions}"
+                          SelectedItem="{Binding FilterAction}"
+                          md:HintAssist.Hint="Действие"
+                          md:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                          Foreground="{DynamicResource PrimaryForeground}"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                          Width="160" Margin="0,0,12,0"/>
+                <!-- Apply -->
+                <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                        Command="{Binding ApplyFiltersCommand}"
+                        md:ButtonAssist.CornerRadius="6"
+                        Height="36" Padding="16,0" Margin="0,0,6,0"
+                        Content="Применить"/>
+                <!-- Clear -->
+                <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Command="{Binding ClearFiltersCommand}"
+                        md:ButtonAssist.CornerRadius="6"
+                        Height="36" Padding="12,0"
+                        Content="Сбросить"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Chain verify result banner -->
+        <Border Grid.Row="2"
+                Visibility="{Binding ChainVerifyResult, Converter={StaticResource NullToVisibilityConverter}}"
+                Padding="24,10">
+            <Border CornerRadius="6" Padding="16,10">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#4CAF5022"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ChainIsIntact}" Value="False">
+                                <Setter Property="Background" Value="#F4433622"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal">
+                    <md:PackIcon Width="20" Height="20" Margin="0,0,10,0"
+                                 VerticalAlignment="Center">
+                        <md:PackIcon.Style>
+                            <Style TargetType="md:PackIcon">
+                                <Setter Property="Kind" Value="CheckCircle"/>
+                                <Setter Property="Foreground" Value="#4CAF50"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ChainIsIntact}" Value="False">
+                                        <Setter Property="Kind" Value="AlertCircle"/>
+                                        <Setter Property="Foreground" Value="#F44336"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </md:PackIcon.Style>
+                    </md:PackIcon>
+                    <TextBlock Text="{Binding ChainVerifyResult}"
+                               FontSize="13" FontWeight="Medium"
+                               VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#4CAF50"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ChainIsIntact}" Value="False">
+                                        <Setter Property="Foreground" Value="#F44336"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- DataGrid -->
+        <DataGrid Grid.Row="3"
+                  ItemsSource="{Binding Logs}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  Background="{DynamicResource PrimaryBackground}"
+                  Foreground="{DynamicResource PrimaryForeground}"
+                  BorderThickness="0"
+                  GridLinesVisibility="Horizontal"
+                  HorizontalGridLinesBrush="{DynamicResource BorderBrush}"
+                  RowBackground="Transparent"
+                  AlternatingRowBackground="{DynamicResource SecondaryBackground}"
+                  Margin="0"
+                  RowHeight="36"
+                  ColumnHeaderStyle="{StaticResource MaterialDesignDataGridColumnHeader}">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="№" Binding="{Binding SequenceNum}" Width="60"/>
+                <DataGridTextColumn Header="Время" Binding="{Binding Timestamp, StringFormat=dd.MM.yyyy HH:mm:ss}" Width="150"/>
+                <DataGridTextColumn Header="Пользователь" Binding="{Binding Username}" Width="120"/>
+                <DataGridTextColumn Header="Действие" Binding="{Binding Action}" Width="130"/>
+                <DataGridTextColumn Header="Объект" Binding="{Binding EntityType}" Width="120"/>
+                <DataGridTextColumn Header="ID объекта" Binding="{Binding EntityId}" Width="140"/>
+                <DataGridTextColumn Header="Статус" Binding="{Binding Status}" Width="90"/>
+                <DataGridTextColumn Header="IP" Binding="{Binding IpAddress}" Width="120"/>
+                <DataGridTextColumn Header="Детали" Binding="{Binding Details}" Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Pagination -->
+        <Border Grid.Row="4"
+                Background="{DynamicResource SecondaryBackground}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="24,10">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <Button Style="{StaticResource MaterialDesignIconButton}"
+                        Command="{Binding PrevPageCommand}"
+                        ToolTip="Назад">
+                    <md:PackIcon Kind="ChevronLeft" Width="20" Height="20"/>
+                </Button>
+                <TextBlock Text="{Binding CurrentPage, StringFormat='Страница {0}'}"
+                           Foreground="{DynamicResource PrimaryForeground}"
+                           VerticalAlignment="Center"
+                           Margin="16,0"
+                           FontSize="13"/>
+                <Button Style="{StaticResource MaterialDesignIconButton}"
+                        Command="{Binding NextPageCommand}"
+                        IsEnabled="{Binding HasNextPage}"
+                        ToolTip="Вперёд">
+                    <md:PackIcon Kind="ChevronRight" Width="20" Height="20"/>
+                </Button>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

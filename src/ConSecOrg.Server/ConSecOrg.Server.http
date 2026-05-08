@@ -1,0 +1,6 @@
+@ConSecOrg.Server_HostAddress = http://localhost:5205
+
+GET {{ConSecOrg.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

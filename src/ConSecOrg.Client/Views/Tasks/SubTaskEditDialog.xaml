@@ -1,0 +1,141 @@
+<Window x:Class="ConSecOrg.Client.Views.Tasks.SubTaskEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:enums="clr-namespace:ConSecOrg.Shared.Enums;assembly=ConSecOrg.Shared"
+        Title="Подзадача"
+        Width="460" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{DynamicResource SecondaryBackground}"
+        BorderBrush="{DynamicResource BorderBrush}"
+        BorderThickness="1"
+        TextElement.Foreground="{DynamicResource PrimaryForeground}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Generic.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="24,20,24,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBox Grid.Row="0"
+                 Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                 materialDesign:HintAssist.Hint="Название подзадачи"
+                 materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                 Foreground="{DynamicResource PrimaryForeground}"
+                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                 FontSize="15" FontWeight="SemiBold"
+                 Margin="0,0,0,16">
+            <TextBox.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding SaveCommand}"/>
+                <KeyBinding Key="Escape" Command="{Binding CancelCommand}"/>
+            </TextBox.InputBindings>
+        </TextBox>
+
+        <!-- Priority + Due date row -->
+        <Grid Grid.Row="1" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Priority -->
+            <ComboBox Grid.Column="0"
+                      SelectedValue="{Binding Priority}"
+                      SelectedValuePath="Tag"
+                      materialDesign:HintAssist.Hint="Приоритет"
+                      materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                      Foreground="{DynamicResource PrimaryForeground}"
+                      Style="{StaticResource MaterialDesignOutlinedComboBox}">
+                <ComboBoxItem Tag="{x:Static enums:TaskPriorityDto.Low}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="FlagOutline" Width="14" Height="14"
+                                                 Foreground="#616161" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Не важно" Foreground="#616161" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ComboBoxItem>
+                <ComboBoxItem Tag="{x:Static enums:TaskPriorityDto.Normal}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Flag" Width="14" Height="14"
+                                                 Foreground="#2E7D32" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Нормально" Foreground="#2E7D32" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ComboBoxItem>
+                <ComboBoxItem Tag="{x:Static enums:TaskPriorityDto.High}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Flag" Width="14" Height="14"
+                                                 Foreground="#E65100" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Важно" Foreground="#E65100" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ComboBoxItem>
+                <ComboBoxItem Tag="{x:Static enums:TaskPriorityDto.Critical}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Flag" Width="14" Height="14"
+                                                 Foreground="#C62828" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Критично!" Foreground="#C62828" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ComboBoxItem>
+            </ComboBox>
+
+            <!-- Due date -->
+            <DatePicker Grid.Column="2"
+                        SelectedDate="{Binding DueDate}"
+                        materialDesign:HintAssist.Hint="Дедлайн (необяз.)"
+                        materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                        Foreground="{DynamicResource PrimaryForeground}"
+                        Style="{StaticResource MaterialDesignOutlinedDatePicker}"/>
+        </Grid>
+
+        <!-- Description -->
+        <TextBox Grid.Row="2"
+                 Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                 materialDesign:HintAssist.Hint="Описание (необязательно)"
+                 materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                 Foreground="{DynamicResource PrimaryForeground}"
+                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 MinHeight="80" MaxHeight="160"
+                 VerticalScrollBarVisibility="Auto"
+                 FontSize="13"
+                 Margin="0,0,0,20"/>
+
+        <!-- Action buttons -->
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="1"
+                    Command="{Binding SaveCommand}"
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    materialDesign:ButtonAssist.CornerRadius="8"
+                    Height="36" Padding="24,0"
+                    Content="Сохранить"/>
+
+            <Button Grid.Column="3"
+                    Command="{Binding CancelCommand}"
+                    IsCancel="True"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    materialDesign:ButtonAssist.CornerRadius="8"
+                    Height="36" Padding="20,0"
+                    Content="Отмена"/>
+        </Grid>
+    </Grid>
+</Window>

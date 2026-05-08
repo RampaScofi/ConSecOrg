@@ -1,0 +1,184 @@
+<Window x:Class="ConSecOrg.Client.Views.Dialogs.NoteDetailDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:mdXaml="clr-namespace:MdXaml;assembly=MdXaml"
+        Title=""
+        Width="640" Height="560"
+        WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResizeWithGrip"
+        ShowInTaskbar="False">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Generic.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Border CornerRadius="14"
+            Background="{DynamicResource SecondaryBackground}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect Color="#000" Opacity="0.40" BlurRadius="32" ShadowDepth="8" Direction="270"/>
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header: drag area + close -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource CardBackground}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="22,16,16,16"
+                    MouseLeftButtonDown="Header_MouseDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Цветной квадрат уровня -->
+                    <Border x:Name="LevelDot" Width="10" Height="10" CornerRadius="5"
+                            VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock x:Name="TitleText" FontSize="18" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource PrimaryForeground}"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock x:Name="SubtitleText" FontSize="11"
+                                   Foreground="{DynamicResource SecondaryForeground}"
+                                   Margin="0,2,0,0"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="2" Style="{StaticResource FlatIconButton}"
+                            Width="32" Height="32" Click="CloseBtn_Click"
+                            ToolTip="Закрыть (Esc)">
+                        <materialDesign:PackIcon Kind="Close" Width="16" Height="16"
+                                                 Foreground="{DynamicResource SecondaryForeground}"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Meta: уровень, теги, таймер -->
+            <Border Grid.Row="1"
+                    Background="{DynamicResource SecondaryBackground}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="22,12">
+                <StackPanel Orientation="Horizontal">
+                    <!-- Бейдж уровня -->
+                    <Border x:Name="LevelBadge" CornerRadius="4" Padding="8,3" Margin="0,0,10,0"
+                            VerticalAlignment="Center">
+                        <TextBlock x:Name="LevelBadgeText" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="White"/>
+                    </Border>
+
+                    <!-- Дата создания -->
+                    <materialDesign:PackIcon Kind="ClockOutline" Width="13" Height="13"
+                                             Foreground="{DynamicResource SecondaryForeground}"
+                                             VerticalAlignment="Center" Margin="6,0,4,0"/>
+                    <TextBlock x:Name="CreatedText" FontSize="12"
+                               Foreground="{DynamicResource SecondaryForeground}"
+                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                    <!-- Таймер уничтожения -->
+                    <Border x:Name="TimerBadge" Background="#FF9800" CornerRadius="6"
+                            Padding="8,3" VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Fire" Width="12" Height="12"
+                                                     Foreground="White" Margin="0,0,4,0"/>
+                            <TextBlock x:Name="TimerText" FontSize="11" Foreground="White" FontWeight="Medium"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- Содержимое (Markdown-предпросмотр) -->
+            <Grid Grid.Row="2">
+                <!-- Обычное содержимое -->
+                <mdXaml:MarkdownScrollViewer x:Name="ContentView"
+                                             Padding="22,16"
+                                             Background="{DynamicResource SecondaryBackground}"/>
+
+                <!-- Заглушка для запертых заметок -->
+                <Border x:Name="LockedOverlay"
+                        Background="{DynamicResource SecondaryBackground}"
+                        Visibility="Collapsed">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <Border Width="74" Height="74" CornerRadius="37"
+                                Background="{DynamicResource AccentAlphaBrush}"
+                                HorizontalAlignment="Center">
+                            <materialDesign:PackIcon Kind="LockOutline"
+                                                     Width="36" Height="36"
+                                                     Foreground="{DynamicResource AccentBrush}"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Содержимое заблокировано"
+                                   FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource PrimaryForeground}"
+                                   HorizontalAlignment="Center" Margin="0,16,0,4"/>
+                        <TextBlock x:Name="LockedReason"
+                                   FontSize="12" TextAlignment="Center" TextWrapping="Wrap"
+                                   MaxWidth="380"
+                                   Foreground="{DynamicResource SecondaryForeground}"
+                                   HorizontalAlignment="Center"/>
+                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                                Background="{DynamicResource AccentBrush}"
+                                materialDesign:ButtonAssist.CornerRadius="8"
+                                Content="Ввести PIN" Height="36" Margin="0,18,0,0"
+                                Click="UnlockBtn_Click"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Footer: кнопки -->
+            <Border Grid.Row="3"
+                    Background="{DynamicResource CardBackground}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,1,0,0"
+                    Padding="22,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Слева: подсказка -->
+                    <TextBlock x:Name="FooterHint"
+                               FontSize="11" FontStyle="Italic"
+                               Foreground="{DynamicResource SecondaryForeground}"
+                               VerticalAlignment="Center"/>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                materialDesign:ButtonAssist.CornerRadius="8"
+                                Content="Закрыть" Height="36" Margin="0,0,8,0"
+                                Click="CloseBtn_Click"/>
+                        <Button x:Name="EditBtn"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                materialDesign:ButtonAssist.CornerRadius="8"
+                                Height="36" Click="EditBtn_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Pencil" Width="14" Height="14" Margin="0,0,6,0"/>
+                                <TextBlock Text="Редактировать" FontSize="13"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

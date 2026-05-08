@@ -1,0 +1,6 @@
+<Project>
+  <ItemGroup>
+    <!-- AutoMapper GHSA-rvv3-g6hj-g44x: ReDoS in config — mitigated by not exposing mapper config to untrusted input; using latest available version -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-rvv3-g6hj-g44x" />
+  </ItemGroup>
+</Project>

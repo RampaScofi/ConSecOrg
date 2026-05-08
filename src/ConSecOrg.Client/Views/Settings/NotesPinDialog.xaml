@@ -1,0 +1,123 @@
+<Window x:Class="ConSecOrg.Client.Views.Settings.NotesPinDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title=""
+        Width="460" SizeToContent="Height"
+        WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Generic.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Border CornerRadius="14"
+            Background="{DynamicResource SecondaryBackground}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1"
+            Padding="28,24,28,22">
+        <Border.Effect>
+            <DropShadowEffect Color="#000" Opacity="0.35" BlurRadius="28" ShadowDepth="6" Direction="270"/>
+        </Border.Effect>
+
+        <StackPanel>
+            <!-- Header -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                <Border Width="42" Height="42" CornerRadius="21" Margin="0,0,14,0"
+                        Background="{DynamicResource AccentAlphaBrush}">
+                    <materialDesign:PackIcon Kind="LockReset"
+                                             Width="22" Height="22"
+                                             Foreground="{DynamicResource AccentBrush}"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="TitleText"
+                               FontSize="16" FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryForeground}"/>
+                    <TextBlock Text="Защита заметок «Конфиденциальный» / «Секретный»"
+                               FontSize="11"
+                               Foreground="{DynamicResource SecondaryForeground}"
+                               Margin="0,2,0,0"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Confirmation field -->
+            <TextBlock x:Name="ConfirmationLabel"
+                       FontSize="12" FontWeight="Medium"
+                       Foreground="{DynamicResource SecondaryForeground}"
+                       Margin="0,0,0,4"/>
+            <PasswordBox x:Name="ConfirmationBox"
+                         Style="{StaticResource MaterialDesignOutlinedPasswordBox}"
+                         materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                         materialDesign:HintAssist.IsFloating="False"
+                         Foreground="{DynamicResource PrimaryForeground}"
+                         CaretBrush="{DynamicResource PrimaryForeground}"
+                         FontSize="14" Height="44" Padding="10,8"
+                         Margin="0,0,0,14"/>
+
+            <!-- New PIN -->
+            <TextBlock Text="Новый PIN-код (минимум 4 символа)"
+                       FontSize="12" FontWeight="Medium"
+                       Foreground="{DynamicResource SecondaryForeground}"
+                       Margin="0,0,0,4"/>
+            <PasswordBox x:Name="NewPinBox"
+                         Style="{StaticResource MaterialDesignOutlinedPasswordBox}"
+                         materialDesign:HintAssist.Hint="Новый PIN"
+                         materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                         materialDesign:HintAssist.IsFloating="False"
+                         Foreground="{DynamicResource PrimaryForeground}"
+                         CaretBrush="{DynamicResource PrimaryForeground}"
+                         FontSize="14" Height="44" Padding="10,8"
+                         Margin="0,0,0,8"/>
+
+            <!-- Confirm new PIN -->
+            <PasswordBox x:Name="ConfirmNewPinBox"
+                         Style="{StaticResource MaterialDesignOutlinedPasswordBox}"
+                         materialDesign:HintAssist.Hint="Повторите PIN"
+                         materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                         materialDesign:HintAssist.IsFloating="False"
+                         Foreground="{DynamicResource PrimaryForeground}"
+                         CaretBrush="{DynamicResource PrimaryForeground}"
+                         FontSize="14" Height="44" Padding="10,8"
+                         Margin="0,0,0,8"/>
+
+            <!-- Error -->
+            <TextBlock x:Name="ErrorText"
+                       Foreground="#EF5350" FontSize="12"
+                       Visibility="Collapsed"
+                       Margin="0,2,0,12"/>
+
+            <!-- Buttons -->
+            <Grid Margin="0,12,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        materialDesign:ButtonAssist.CornerRadius="8"
+                        Content="Отмена"
+                        Height="40" FontSize="14"
+                        Click="CancelBtn_Click"
+                        IsCancel="True"/>
+
+                <Button Grid.Column="2"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        materialDesign:ButtonAssist.CornerRadius="8"
+                        Content="Сохранить"
+                        Height="40" FontSize="14"
+                        Click="SaveBtn_Click"
+                        IsDefault="True"/>
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

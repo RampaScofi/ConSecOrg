@@ -1,0 +1,254 @@
+<UserControl x:Class="ConSecOrg.Client.Views.Startup.ModeSelectionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             TextElement.Foreground="{DynamicResource PrimaryForeground}"
+             Background="{DynamicResource PrimaryBackground}">
+
+    <Grid>
+        <!-- Subtle gradient overlay for depth -->
+        <Rectangle>
+            <Rectangle.Fill>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#10000000" Offset="0"/>
+                    <GradientStop Color="#28000000" Offset="1"/>
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                        Margin="40,60,40,60">
+
+                <!-- ── Logo + Title ── -->
+                <StackPanel HorizontalAlignment="Center" Margin="0,0,0,52">
+                    <!-- Icon -->
+                    <Border Width="80" Height="80" CornerRadius="20"
+                            Background="{DynamicResource AccentBrush}"
+                            HorizontalAlignment="Center"
+                            Margin="0,0,0,20">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#000" Opacity="0.35" BlurRadius="24"
+                                              ShadowDepth="6" Direction="270"/>
+                        </Border.Effect>
+                        <materialDesign:PackIcon Kind="ShieldLockOutline"
+                                                 Width="44" Height="44"
+                                                 Foreground="White"
+                                                 HorizontalAlignment="Center"
+                                                 VerticalAlignment="Center"/>
+                    </Border>
+
+                    <TextBlock Text="ConSecOrg"
+                               FontSize="38" FontWeight="Bold"
+                               Foreground="{DynamicResource PrimaryForeground}"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,6"/>
+                    <TextBlock Text="Защищённый электронный органайзер"
+                               FontSize="15"
+                               Foreground="{DynamicResource SecondaryForeground}"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- ── Mode cards ── -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+
+                    <!-- Personal mode card -->
+                    <Border Margin="0,0,20,0" CornerRadius="16"
+                            Background="{DynamicResource CardBackground}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1" Width="310" Cursor="Hand">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#000" Opacity="0.18" BlurRadius="20"
+                                              ShadowDepth="4" Direction="270"/>
+                        </Border.Effect>
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Border.InputBindings>
+                            <MouseBinding MouseAction="LeftClick" Command="{Binding SelectPersonalCommand}"/>
+                        </Border.InputBindings>
+
+                        <Grid>
+                            <!-- Colored accent top bar -->
+                            <Border CornerRadius="16,16,0,0" Height="6"
+                                    VerticalAlignment="Top"
+                                    Background="{DynamicResource AccentBrush}"
+                                    Opacity="0.7"/>
+
+                            <StackPanel Margin="32,24,32,28">
+                                <!-- Icon circle -->
+                                <Border Width="56" Height="56" CornerRadius="28"
+                                        HorizontalAlignment="Center"
+                                        Background="{DynamicResource AccentAlphaBrush}"
+                                        Margin="0,0,0,16">
+                                    <materialDesign:PackIcon Kind="LaptopAccount"
+                                                             Width="28" Height="28"
+                                                             Foreground="{DynamicResource AccentBrush}"
+                                                             HorizontalAlignment="Center"
+                                                             VerticalAlignment="Center"/>
+                                </Border>
+
+                                <TextBlock Text="Персональный"
+                                           FontSize="20" FontWeight="Bold"
+                                           Foreground="{DynamicResource PrimaryForeground}"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,0,0,8"/>
+                                <TextBlock Text="Локальное хранение данных&#x0a;без подключения к серверу"
+                                           FontSize="13" LineHeight="20"
+                                           Foreground="{DynamicResource SecondaryForeground}"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           Margin="0,0,0,20"/>
+
+                                <!-- Feature pills -->
+                                <StackPanel HorizontalAlignment="Center" Margin="0,0,0,20">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <materialDesign:PackIcon Kind="Check" Width="14" Height="14"
+                                                                 Foreground="#4CAF50" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Работа без интернета"
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryForeground}"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <materialDesign:PackIcon Kind="Check" Width="14" Height="14"
+                                                                 Foreground="#4CAF50" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="PIN-защита данных"
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryForeground}"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Check" Width="14" Height="14"
+                                                                 Foreground="#4CAF50" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="ГОСТ-шифрование"
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryForeground}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <Button Command="{Binding SelectPersonalCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        materialDesign:ButtonAssist.CornerRadius="10"
+                                        HorizontalAlignment="Center"
+                                        Width="200" Height="40" FontSize="14">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="ArrowRight" Width="16" Height="16" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Выбрать"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Corporate mode card -->
+                    <Border CornerRadius="16"
+                            Background="{DynamicResource CardBackground}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1" Width="310" Cursor="Hand">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#000" Opacity="0.18" BlurRadius="20"
+                                              ShadowDepth="4" Direction="270"/>
+                        </Border.Effect>
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+
+                        <Grid>
+                            <Border CornerRadius="16,16,0,0" Height="6"
+                                    VerticalAlignment="Top"
+                                    Background="#4CAF50" Opacity="0.7"/>
+
+                            <StackPanel Margin="32,24,32,28">
+                                <Border Width="56" Height="56" CornerRadius="28"
+                                        HorizontalAlignment="Center"
+                                        Background="#1A4CAF50"
+                                        Margin="0,0,0,16">
+                                    <materialDesign:PackIcon Kind="Domain"
+                                                             Width="28" Height="28"
+                                                             Foreground="#4CAF50"
+                                                             HorizontalAlignment="Center"
+                                                             VerticalAlignment="Center"/>
+                                </Border>
+
+                                <TextBlock Text="Корпоративный"
+                                           FontSize="20" FontWeight="Bold"
+                                           Foreground="{DynamicResource PrimaryForeground}"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,0,0,8"/>
+                                <TextBlock Text="Клиент-серверная архитектура&#x0a;с RBAC и аудитом"
+                                           FontSize="13" LineHeight="20"
+                                           Foreground="{DynamicResource SecondaryForeground}"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           Margin="0,0,0,16"/>
+
+                                <!-- Feature pills -->
+                                <StackPanel HorizontalAlignment="Center" Margin="0,0,0,16">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <materialDesign:PackIcon Kind="Check" Width="14" Height="14"
+                                                                 Foreground="#4CAF50" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Многопользовательский режим"
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryForeground}"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <materialDesign:PackIcon Kind="Check" Width="14" Height="14"
+                                                                 Foreground="#4CAF50" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="RBAC + аудит" FontSize="12"
+                                                   Foreground="{DynamicResource SecondaryForeground}"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Check" Width="14" Height="14"
+                                                                 Foreground="#4CAF50" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="JWT + привязка к устройству"
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryForeground}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Server URL -->
+                                <TextBox Text="{Binding ServerUrl, UpdateSourceTrigger=PropertyChanged}"
+                                         materialDesign:HintAssist.Hint="URL сервера (http://...)"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         Margin="0,0,0,14" FontSize="13"/>
+
+                                <Button Command="{Binding SelectCorporateCommand}"
+                                        materialDesign:ButtonAssist.CornerRadius="10"
+                                        HorizontalAlignment="Center"
+                                        Width="200" Height="40" FontSize="14"
+                                        Background="#4CAF50" Foreground="White"
+                                        BorderThickness="0">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                                            <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="10"/>
+                                        </Style>
+                                    </Button.Style>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Connection" Width="16" Height="16" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Подключиться"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- ── Bottom security note ── -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,28,0,0">
+                    <materialDesign:PackIcon Kind="ShieldCheck" Width="16" Height="16"
+                                             Foreground="{DynamicResource AccentBrush}"
+                                             VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Text="Шифрование ГОСТ Р 34.12-2015 «Кузнечик» · HMAC Стрибог-256"
+                               FontSize="12" Foreground="{DynamicResource SecondaryForeground}"/>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

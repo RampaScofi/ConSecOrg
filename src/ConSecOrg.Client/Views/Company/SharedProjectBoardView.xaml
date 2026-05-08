@@ -1,0 +1,889 @@
+<UserControl x:Class="ConSecOrg.Client.Views.Company.SharedProjectBoardView"
+             x:Name="boardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+             xmlns:vm="clr-namespace:ConSecOrg.Client.ViewModels.Company"
+             xmlns:views="clr-namespace:ConSecOrg.Client.Views.Company"
+             xmlns:t="clr-namespace:ConSecOrg.Client.Themes"
+             xmlns:svc="clr-namespace:ConSecOrg.Client.Services"
+             d:DataContext="{d:DesignInstance Type=vm:SharedProjectBoardViewModel}"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             Background="{DynamicResource PrimaryBackground}">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Main board area -->
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- ROW 0 — Project header -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource SecondaryBackground}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="20,0">
+                <Grid MinHeight="56">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Project name + meta -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
+                        <md:PackIcon Kind="FolderAccount" Width="22" Height="22" VerticalAlignment="Center"
+                                     Foreground="{DynamicResource AccentBrush}" Margin="0,0,10,0"/>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Project.Name}"
+                                       FontSize="17" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource PrimaryForeground}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                <TextBlock Text="{Binding MembersCountText, Mode=OneWay}"
+                                           FontSize="12" Foreground="{DynamicResource SecondaryForeground}"/>
+                                <Border Background="#3343A047" CornerRadius="8" Padding="6,1" Margin="10,0,0,0"
+                                        Visibility="{Binding IsConnected, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="6" Height="6" Fill="#43A047" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Live" Margin="4,0,0,0" FontSize="10" Foreground="#43A047"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Right action buttons -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                Command="{Binding OpenChatListCommand}" ToolTip="Все чаты" Margin="0,0,4,0">
+                            <StackPanel Orientation="Horizontal">
+                                <md:PackIcon Kind="Forum" Width="14" Height="14" VerticalAlignment="Center"/>
+                                <TextBlock Text="Чаты" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                Command="{Binding OpenProjectChatCommand}" ToolTip="Чат проекта" Margin="0,0,4,0">
+                            <StackPanel Orientation="Horizontal">
+                                <md:PackIcon Kind="ChatProcessing" Width="14" Height="14" VerticalAlignment="Center"/>
+                                <TextBlock Text="Чат" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                Command="{Binding LoadCommand}" ToolTip="Обновить">
+                            <md:PackIcon Kind="Refresh" Width="18" Height="18"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ROW 1 — Status bar -->
+            <Border Grid.Row="1" Padding="20,6"
+                    Background="{DynamicResource AccentAlpha2Brush}"
+                    Visibility="{Binding StatusText, Converter={StaticResource NullToVisibilityConverter}}">
+                <TextBlock Text="{Binding StatusText}"
+                           Foreground="{DynamicResource PrimaryForeground}" FontSize="12"/>
+            </Border>
+
+            <!-- ROW 2 — Kanban board -->
+            <ScrollViewer Grid.Row="2"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Disabled"
+                          Padding="16,16,16,8">
+                <StackPanel Orientation="Horizontal">
+
+                    <!-- Dynamic server-side columns -->
+                    <ItemsControl ItemsSource="{Binding Columns}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:SharedColumnViewModel}">
+                                <Border Width="300" Margin="0,0,12,0" CornerRadius="12"
+                                        Background="{DynamicResource CardBackground}"
+                                        BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="1"
+                                        VerticalAlignment="Top"
+                                        AllowDrop="True"
+                                        DragEnter="Column_DragEnter"
+                                        DragOver="Column_DragOver"
+                                        DragLeave="Column_DragLeave"
+                                        Drop="Column_Drop"
+                                        MouseLeave="Column_MouseLeave">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="#000" Opacity="0.06" BlurRadius="12" ShadowDepth="2" Direction="270"/>
+                                    </Border.Effect>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Colored header -->
+                                        <Border Grid.Row="0" CornerRadius="12,12,0,0"
+                                                Background="{Binding Color, Converter={StaticResource HexColorToBrushConverter}}"
+                                                Padding="14,11">
+                                            <Grid>
+                                                <!-- Normal state -->
+                                                <Grid Visibility="{Binding IsRenaming, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Name}"
+                                                                   FontWeight="Bold" FontSize="13.5"
+                                                                   Foreground="White" VerticalAlignment="Center"/>
+                                                        <Border Background="#33FFFFFF" CornerRadius="10"
+                                                                Padding="8,3" Margin="10,0,0,0" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding TaskCount}"
+                                                                       Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                                                        </Border>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                        <Button Style="{StaticResource FlatIconButton}"
+                                                                Width="26" Height="26" Margin="4,0,0,0"
+                                                                Command="{Binding DataContext.StartRenameColumnCommand, ElementName=boardView}"
+                                                                CommandParameter="{Binding}"
+                                                                ToolTip="Переименовать">
+                                                            <md:PackIcon Kind="Pencil" Width="13" Height="13" Foreground="White"/>
+                                                        </Button>
+                                                        <Button Style="{StaticResource FlatIconButton}"
+                                                                Width="26" Height="26" Margin="2,0,0,0"
+                                                                Command="{Binding ToggleColorPickerCommand}"
+                                                                ToolTip="Цвет колонки">
+                                                            <md:PackIcon Kind="Palette" Width="13" Height="13" Foreground="White"/>
+                                                        </Button>
+                                                        <Button Style="{StaticResource FlatIconButton}"
+                                                                Width="26" Height="26" Margin="2,0,0,0"
+                                                                Command="{Binding DataContext.DeleteColumnCommand, ElementName=boardView}"
+                                                                CommandParameter="{Binding}"
+                                                                ToolTip="Удалить колонку">
+                                                            <md:PackIcon Kind="TrashCanOutline" Width="13" Height="13" Foreground="#FFCDD2"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <!-- Rename state -->
+                                                <Grid Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox Grid.Column="0"
+                                                             Text="{Binding RenameText, UpdateSourceTrigger=PropertyChanged}"
+                                                             Background="Transparent" Foreground="White"
+                                                             CaretBrush="White" SelectionBrush="#80FFFFFF"
+                                                             BorderBrush="#80FFFFFF" BorderThickness="0,0,0,1"
+                                                             FontSize="13.5" FontWeight="Bold"
+                                                             Padding="0,2" VerticalAlignment="Center">
+                                                        <TextBox.InputBindings>
+                                                            <KeyBinding Key="Enter"
+                                                                        Command="{Binding DataContext.ConfirmRenameColumnCommand, ElementName=boardView}"
+                                                                        CommandParameter="{Binding}"/>
+                                                            <KeyBinding Key="Escape"
+                                                                        Command="{Binding DataContext.CancelRenameColumnCommand, ElementName=boardView}"
+                                                                        CommandParameter="{Binding}"/>
+                                                        </TextBox.InputBindings>
+                                                    </TextBox>
+                                                    <Button Grid.Column="1" Style="{StaticResource FlatIconButton}"
+                                                            Width="26" Height="26" Margin="4,0,0,0"
+                                                            Command="{Binding DataContext.ConfirmRenameColumnCommand, ElementName=boardView}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip="Сохранить">
+                                                        <md:PackIcon Kind="Check" Width="14" Height="14" Foreground="White"/>
+                                                    </Button>
+                                                    <Button Grid.Column="2" Style="{StaticResource FlatIconButton}"
+                                                            Width="26" Height="26"
+                                                            Command="{Binding DataContext.CancelRenameColumnCommand, ElementName=boardView}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip="Отмена">
+                                                        <md:PackIcon Kind="Close" Width="13" Height="13" Foreground="White"/>
+                                                    </Button>
+                                                </Grid>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Inline color picker -->
+                                        <Border Grid.Row="1"
+                                                Background="{DynamicResource SecondaryBackground}"
+                                                Padding="10,8"
+                                                Visibility="{Binding ShowColorPicker, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <WrapPanel>
+                                                <Button Style="{StaticResource ColorSwatchButton}" Width="24" Height="24" Margin="3"
+                                                        Background="#E53935" Command="{Binding SetColorCommand}" CommandParameter="#E53935"/>
+                                                <Button Style="{StaticResource ColorSwatchButton}" Width="24" Height="24" Margin="3"
+                                                        Background="#E91E63" Command="{Binding SetColorCommand}" CommandParameter="#E91E63"/>
+                                                <Button Style="{StaticResource ColorSwatchButton}" Width="24" Height="24" Margin="3"
+                                                        Background="#9C27B0" Command="{Binding SetColorCommand}" CommandParameter="#9C27B0"/>
+                                                <Button Style="{StaticResource ColorSwatchButton}" Width="24" Height="24" Margin="3"
+                                                        Background="#3F51B5" Command="{Binding SetColorCommand}" CommandParameter="#3F51B5"/>
+                                                <Button Style="{StaticResource ColorSwatchButton}" Width="24" Height="24" Margin="3"
+                                                        Background="#2196F3" Command="{Binding SetColorCommand}" CommandParameter="#2196F3"/>
+                                                <Button Style="{StaticResource ColorSwatchButton}" Width="24" Height="24" Margin="3"
+                                                        Background="#00BCD4" Command="{Binding SetColorCommand}" CommandParameter="#00BCD4"/>
+                                                <Button Style="{StaticResource ColorSwatchButton}" Width="24" Height="24" Margin="3"
+                                                        Background="#4CAF50" Command="{Binding SetColorCommand}" CommandParameter="#4CAF50"/>
+                                                <Button Style="{StaticResource ColorSwatchButton}" Width="24" Height="24" Margin="3"
+                                                        Background="#FF9800" Command="{Binding SetColorCommand}" CommandParameter="#FF9800"/>
+                                                <Button Style="{StaticResource ColorSwatchButton}" Width="24" Height="24" Margin="3"
+                                                        Background="#FF5722" Command="{Binding SetColorCommand}" CommandParameter="#FF5722"/>
+                                                <Button Style="{StaticResource ColorSwatchButton}" Width="24" Height="24" Margin="3"
+                                                        Background="#795548" Command="{Binding SetColorCommand}" CommandParameter="#795548"/>
+                                                <Button Style="{StaticResource ColorSwatchButton}" Width="24" Height="24" Margin="3"
+                                                        Background="#607D8B" Command="{Binding SetColorCommand}" CommandParameter="#607D8B"/>
+                                                <Button Style="{StaticResource ColorSwatchButton}" Width="24" Height="24" Margin="3"
+                                                        Background="#009688" Command="{Binding SetColorCommand}" CommandParameter="#009688"/>
+                                            </WrapPanel>
+                                        </Border>
+
+                                        <!-- + Add task quick input -->
+                                        <Border Grid.Row="2" Padding="12,6,12,6">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding NewTaskTitle, UpdateSourceTrigger=PropertyChanged}"
+                                                         md:HintAssist.Hint="+ Добавить задачу (Enter)"
+                                                         md:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                                         md:HintAssist.IsFloating="False"
+                                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                         Foreground="{DynamicResource PrimaryForeground}"
+                                                         CaretBrush="{DynamicResource PrimaryForeground}"
+                                                         FontSize="12.5" Height="38" Padding="10,6"
+                                                         VerticalContentAlignment="Center">
+                                                    <TextBox.InputBindings>
+                                                        <KeyBinding Key="Enter"
+                                                                    Command="{Binding DataContext.AddTaskToColumnCommand, ElementName=boardView}"
+                                                                    CommandParameter="{Binding}"/>
+                                                    </TextBox.InputBindings>
+                                                </TextBox>
+                                                <!-- PencilPlus button — открыть полный диалог -->
+                                                <Button Grid.Column="1"
+                                                        Style="{StaticResource FlatIconButton}"
+                                                        Width="34" Height="38" Margin="4,0,0,0"
+                                                        Command="{Binding DataContext.OpenAddTaskDialogCommand, ElementName=boardView}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="Создать задачу с деталями">
+                                                    <md:PackIcon Kind="PencilPlus" Width="15" Height="15"
+                                                                 Foreground="{DynamicResource AccentBrush}"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Task cards -->
+                                        <ScrollViewer Grid.Row="3"
+                                                      VerticalScrollBarVisibility="Auto"
+                                                      MaxHeight="460" Padding="8,2">
+                                            <ItemsControl ItemsSource="{Binding Tasks}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:SharedTaskCardViewModel}">
+                                                        <Border CornerRadius="10" Margin="0,0,0,8" Cursor="Hand"
+                                                                Background="{DynamicResource CardBackground}"
+                                                                BorderBrush="{DynamicResource BorderBrush}"
+                                                                BorderThickness="1"
+                                                                AllowDrop="True"
+                                                                PreviewMouseLeftButtonDown="TaskCard_PreviewMouseLeftButtonDown"
+                                                                MouseMove="TaskCard_MouseMove"
+                                                                DragOver="TaskCard_DragOver"
+                                                                Drop="TaskCard_Drop">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Effect">
+                                                                        <Setter.Value>
+                                                                            <DropShadowEffect Color="#000" Opacity="0.07" BlurRadius="8" ShadowDepth="2" Direction="270"/>
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                    <Style.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                                                        </Trigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <!-- Circle complete toggle -->
+                                                                <Button Grid.Column="0"
+                                                                        Style="{StaticResource FlatIconButton}"
+                                                                        Width="36" Height="36" Margin="6,8,0,8"
+                                                                        VerticalAlignment="Top"
+                                                                        Command="{Binding DataContext.ToggleCompleteCommand, ElementName=boardView}"
+                                                                        CommandParameter="{Binding}"
+                                                                        ToolTip="Отметить выполненной">
+                                                                    <md:PackIcon Width="18" Height="18">
+                                                                        <md:PackIcon.Style>
+                                                                            <Style TargetType="md:PackIcon">
+                                                                                <Setter Property="Kind" Value="CheckboxBlankCircleOutline"/>
+                                                                                <Setter Property="Foreground" Value="{DynamicResource BorderBrush}"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                                                        <Setter Property="Kind" Value="CheckCircle"/>
+                                                                                        <Setter Property="Foreground" Value="#4CAF50"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </md:PackIcon.Style>
+                                                                    </md:PackIcon>
+                                                                </Button>
+
+                                                                <!-- Card content -->
+                                                                <StackPanel Grid.Column="1" Margin="4,10,8,10">
+
+                                                                    <!-- Title + dots menu -->
+                                                                    <Grid Margin="0,0,0,6">
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="*"/>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <TextBlock Text="{Binding Title}"
+                                                                                   FontWeight="Medium" FontSize="13"
+                                                                                   TextWrapping="Wrap" LineHeight="20">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Foreground" Value="{DynamicResource PrimaryForeground}"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                                                            <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                                                            <Setter Property="Foreground" Value="{DynamicResource SecondaryForeground}"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                        <!-- Dots button -->
+                                                                        <Button Grid.Column="1"
+                                                                                Style="{StaticResource FlatIconButton}"
+                                                                                Width="26" Height="26"
+                                                                                VerticalAlignment="Top"
+                                                                                Tag="{Binding DataContext, ElementName=boardView}"
+                                                                                Click="DotsButton_Click"
+                                                                                ToolTip="Действия">
+                                                                            <md:PackIcon Kind="DotsVertical" Width="14" Height="14"
+                                                                                         Foreground="{DynamicResource SecondaryForeground}"/>
+                                                                            <Button.ContextMenu>
+                                                                                <ContextMenu>
+                                                                                    <MenuItem Header="Редактировать"
+                                                                                              Command="{Binding Path=PlacementTarget.Tag.OpenEditTaskDialogCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                                              CommandParameter="{Binding Path=PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                                                        <MenuItem.Icon>
+                                                                                            <md:PackIcon Kind="Pencil" Width="14" Height="14"/>
+                                                                                        </MenuItem.Icon>
+                                                                                    </MenuItem>
+                                                                                    <MenuItem Header="Выполнена"
+                                                                                              Command="{Binding Path=PlacementTarget.Tag.ToggleCompleteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                                              CommandParameter="{Binding Path=PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                                                        <MenuItem.Icon>
+                                                                                            <md:PackIcon Kind="CheckCircleOutline" Width="14" Height="14" Foreground="#4CAF50"/>
+                                                                                        </MenuItem.Icon>
+                                                                                    </MenuItem>
+                                                                                    <MenuItem Header="Назначить мне"
+                                                                                              Command="{Binding Path=PlacementTarget.Tag.AssignToMeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                                              CommandParameter="{Binding Path=PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                                                        <MenuItem.Icon>
+                                                                                            <md:PackIcon Kind="AccountPlus" Width="14" Height="14"/>
+                                                                                        </MenuItem.Icon>
+                                                                                    </MenuItem>
+                                                                                    <Separator/>
+                                                                                    <MenuItem Header="Удалить"
+                                                                                              Command="{Binding Path=PlacementTarget.Tag.DeleteTaskCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                                              CommandParameter="{Binding Path=PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                                              Foreground="#EF5350">
+                                                                                        <MenuItem.Icon>
+                                                                                            <md:PackIcon Kind="TrashCanOutline" Width="14" Height="14" Foreground="#EF5350"/>
+                                                                                        </MenuItem.Icon>
+                                                                                    </MenuItem>
+                                                                                </ContextMenu>
+                                                                            </Button.ContextMenu>
+                                                                        </Button>
+                                                                    </Grid>
+
+                                                                    <!-- Tags chips -->
+                                                                    <ItemsControl ItemsSource="{Binding Tags}" Margin="0,0,0,6"
+                                                                                  Visibility="{Binding Tags.Count, Converter={StaticResource NullToVisibilityConverter}}">
+                                                                        <ItemsControl.ItemsPanel>
+                                                                            <ItemsPanelTemplate>
+                                                                                <WrapPanel Orientation="Horizontal"/>
+                                                                            </ItemsPanelTemplate>
+                                                                        </ItemsControl.ItemsPanel>
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <Border Background="{DynamicResource AccentAlphaBrush}"
+                                                                                        CornerRadius="8" Padding="8,2" Margin="0,0,4,3">
+                                                                                    <TextBlock Text="{Binding}" FontSize="11"
+                                                                                               Foreground="{DynamicResource AccentBrush}"/>
+                                                                                </Border>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+
+                                                                    <!-- Priority + due date + assignee -->
+                                                                    <StackPanel Orientation="Horizontal">
+                                                                        <!-- Priority badge -->
+                                                                        <Border Margin="0,0,6,0" CornerRadius="6" Padding="6,2"
+                                                                                Visibility="{Binding ShowPriority, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                            <Border.Style>
+                                                                                <Style TargetType="Border">
+                                                                                    <Setter Property="Background" Value="#E8F5E9"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding Priority}" Value="3">
+                                                                                            <Setter Property="Background" Value="#FFEBEE"/>
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding Priority}" Value="2">
+                                                                                            <Setter Property="Background" Value="#FFF3E0"/>
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding Priority}" Value="0">
+                                                                                            <Setter Property="Background" Value="#F5F5F5"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Border.Style>
+                                                                            <StackPanel Orientation="Horizontal">
+                                                                                <md:PackIcon Kind="Flag" Width="10" Height="10"
+                                                                                             VerticalAlignment="Center" Margin="0,0,3,0">
+                                                                                    <md:PackIcon.Style>
+                                                                                        <Style TargetType="md:PackIcon">
+                                                                                            <Setter Property="Foreground" Value="#2E7D32"/>
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding Priority}" Value="3">
+                                                                                                    <Setter Property="Foreground" Value="#C62828"/>
+                                                                                                </DataTrigger>
+                                                                                                <DataTrigger Binding="{Binding Priority}" Value="2">
+                                                                                                    <Setter Property="Foreground" Value="#E65100"/>
+                                                                                                </DataTrigger>
+                                                                                                <DataTrigger Binding="{Binding Priority}" Value="0">
+                                                                                                    <Setter Property="Foreground" Value="#616161"/>
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </md:PackIcon.Style>
+                                                                                </md:PackIcon>
+                                                                                <TextBlock Text="{Binding PriorityText}" FontSize="11">
+                                                                                    <TextBlock.Style>
+                                                                                        <Style TargetType="TextBlock">
+                                                                                            <Setter Property="Foreground" Value="#2E7D32"/>
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding Priority}" Value="3">
+                                                                                                    <Setter Property="Foreground" Value="#C62828"/>
+                                                                                                </DataTrigger>
+                                                                                                <DataTrigger Binding="{Binding Priority}" Value="2">
+                                                                                                    <Setter Property="Foreground" Value="#E65100"/>
+                                                                                                </DataTrigger>
+                                                                                                <DataTrigger Binding="{Binding Priority}" Value="0">
+                                                                                                    <Setter Property="Foreground" Value="#616161"/>
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </TextBlock.Style>
+                                                                                </TextBlock>
+                                                                            </StackPanel>
+                                                                        </Border>
+                                                                        <!-- Due date -->
+                                                                        <StackPanel Orientation="Horizontal" Margin="0,0,6,0"
+                                                                                    Visibility="{Binding DueDate, Converter={StaticResource NullToVisibilityConverter}}">
+                                                                            <md:PackIcon Kind="CalendarOutline" Width="11" Height="11"
+                                                                                         VerticalAlignment="Center"
+                                                                                         Foreground="{DynamicResource SecondaryForeground}"/>
+                                                                            <TextBlock Text="{Binding DueDate, StringFormat='dd MMM'}"
+                                                                                       FontSize="11" Margin="3,0,0,0"
+                                                                                       VerticalAlignment="Center"
+                                                                                       Foreground="{DynamicResource SecondaryForeground}"/>
+                                                                        </StackPanel>
+                                                                        <!-- Assignee avatar -->
+                                                                        <Button Style="{StaticResource MaterialDesignIconButton}"
+                                                                                Width="26" Height="26" Padding="0"
+                                                                                Command="{Binding DataContext.OpenAssigneeChatCommand, ElementName=boardView}"
+                                                                                CommandParameter="{Binding}"
+                                                                                ToolTip="{Binding AssignedUsername}"
+                                                                                Visibility="{Binding HasAssignee, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                            <Border Width="24" Height="24" CornerRadius="12"
+                                                                                    Background="{Binding AssigneeColor, Converter={StaticResource HexColorToBrushConverter}}">
+                                                                                <TextBlock Text="{Binding AssigneeLetter}"
+                                                                                           Foreground="White" FontWeight="Bold" FontSize="11"
+                                                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                            </Border>
+                                                                        </Button>
+                                                                        <Button Style="{StaticResource MaterialDesignIconButton}"
+                                                                                Width="24" Height="24" Padding="0"
+                                                                                Command="{Binding DataContext.AssignToMeCommand, ElementName=boardView}"
+                                                                                CommandParameter="{Binding}"
+                                                                                ToolTip="Назначить меня"
+                                                                                Visibility="{Binding HasAssignee, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                                                                            <md:PackIcon Kind="AccountPlus" Width="13" Height="13"
+                                                                                         Foreground="{DynamicResource SecondaryForeground}"/>
+                                                                        </Button>
+                                                                    </StackPanel>
+
+                                                                    <!-- Subtask toggle (shown when subtasks exist) -->
+                                                                    <Border Margin="0,6,0,0"
+                                                                            Visibility="{Binding HasSubTasks, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                        <Button Style="{StaticResource FlatIconButton}"
+                                                                                HorizontalAlignment="Left" Padding="2,2" Height="20"
+                                                                                Command="{Binding ToggleSubTasksExpandedCommand}">
+                                                                            <StackPanel Orientation="Horizontal">
+                                                                                <md:PackIcon Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,4,0">
+                                                                                    <md:PackIcon.Style>
+                                                                                        <Style TargetType="md:PackIcon">
+                                                                                            <Setter Property="Kind" Value="ChevronRight"/>
+                                                                                            <Setter Property="Foreground" Value="{DynamicResource SecondaryForeground}"/>
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding IsSubTasksExpanded}" Value="True">
+                                                                                                    <Setter Property="Kind" Value="ChevronDown"/>
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </md:PackIcon.Style>
+                                                                                </md:PackIcon>
+                                                                                <md:PackIcon Kind="FormatListChecks" Width="10" Height="10"
+                                                                                             Foreground="{DynamicResource SecondaryForeground}"
+                                                                                             VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                                                <TextBlock FontSize="11" VerticalAlignment="Center"
+                                                                                           Foreground="{DynamicResource SecondaryForeground}">
+                                                                                    <Run Text="{Binding CompletedSubTaskCount, Mode=OneWay}"/>
+                                                                                    <Run Text="/"/>
+                                                                                    <Run Text="{Binding SubTaskCount, Mode=OneWay}"/>
+                                                                                </TextBlock>
+                                                                            </StackPanel>
+                                                                        </Button>
+                                                                    </Border>
+
+                                                                    <!-- Subtask progress bar -->
+                                                                    <Grid Margin="0,4,0,0"
+                                                                          Visibility="{Binding HasSubTasks, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                        <Border Height="4" CornerRadius="2" Background="{DynamicResource BorderBrush}"/>
+                                                                        <ProgressBar Value="{Binding SubTaskProgress, Mode=OneWay}"
+                                                                                     Minimum="0" Maximum="1" Height="4"
+                                                                                     Foreground="#4CAF50" Background="Transparent" BorderThickness="0"
+                                                                                     Style="{StaticResource MaterialDesignLinearProgressBar}"/>
+                                                                    </Grid>
+
+                                                                    <!-- Inline recursive subtask tree (when IsSubTasksExpanded) -->
+                                                                    <Border Visibility="{Binding IsSubTasksExpanded, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                            BorderBrush="{DynamicResource BorderBrush}"
+                                                                            BorderThickness="0,1,0,0"
+                                                                            Margin="0,4,0,0" Padding="0,6,0,2">
+                                                                        <Border.Resources>
+                                                                            <t:BindingProxy x:Key="sharedCardProxy" Data="{Binding}"/>
+                                                                            <DataTemplate x:Key="SharedCardSubTaskTemplate" DataType="{x:Type svc:SubTaskItem}">
+                                                                                <Grid Margin="0,0,0,1">
+                                                                                    <Grid.RowDefinitions>
+                                                                                        <RowDefinition Height="Auto"/>
+                                                                                        <RowDefinition Height="Auto"/>
+                                                                                    </Grid.RowDefinitions>
+                                                                                    <Border Grid.Row="0" CornerRadius="8" Padding="6,5"
+                                                                                            Background="{DynamicResource SecondaryBackground}"
+                                                                                            BorderBrush="{DynamicResource BorderBrush}"
+                                                                                            BorderThickness="1" Margin="0,2,0,0">
+                                                                                        <Grid>
+                                                                                            <Grid.ColumnDefinitions>
+                                                                                                <ColumnDefinition Width="18"/>
+                                                                                                <ColumnDefinition Width="20"/>
+                                                                                                <ColumnDefinition Width="*"/>
+                                                                                                <ColumnDefinition Width="Auto"/>
+                                                                                                <ColumnDefinition Width="20"/>
+                                                                                            </Grid.ColumnDefinitions>
+                                                                                            <!-- Expand/collapse children -->
+                                                                                            <Button Grid.Column="0" Style="{StaticResource FlatIconButton}"
+                                                                                                    Width="18" Height="22" Padding="0"
+                                                                                                    Command="{Binding Source={StaticResource sharedCardProxy}, Path=Data.ToggleSubExpandedCommand}"
+                                                                                                    CommandParameter="{Binding}"
+                                                                                                    Visibility="{Binding HasChildren, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                                                <md:PackIcon Width="10" Height="10"
+                                                                                                             Foreground="{DynamicResource SecondaryForeground}">
+                                                                                                    <md:PackIcon.Style>
+                                                                                                        <Style TargetType="md:PackIcon">
+                                                                                                            <Setter Property="Kind" Value="ChevronRight"/>
+                                                                                                            <Style.Triggers>
+                                                                                                                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                                                                                    <Setter Property="Kind" Value="ChevronDown"/>
+                                                                                                                </DataTrigger>
+                                                                                                            </Style.Triggers>
+                                                                                                        </Style>
+                                                                                                    </md:PackIcon.Style>
+                                                                                                </md:PackIcon>
+                                                                                            </Button>
+                                                                                            <!-- Circle completion -->
+                                                                                            <Button Grid.Column="1" Style="{StaticResource FlatIconButton}"
+                                                                                                    Width="20" Height="22" Padding="0"
+                                                                                                    Command="{Binding Source={StaticResource sharedCardProxy}, Path=Data.ToggleSubTaskCommand}"
+                                                                                                    CommandParameter="{Binding}">
+                                                                                                <md:PackIcon Width="13" Height="13">
+                                                                                                    <md:PackIcon.Style>
+                                                                                                        <Style TargetType="md:PackIcon">
+                                                                                                            <Setter Property="Kind" Value="CheckboxBlankCircleOutline"/>
+                                                                                                            <Setter Property="Foreground" Value="{DynamicResource BorderBrush}"/>
+                                                                                                            <Style.Triggers>
+                                                                                                                <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                                                                                    <Setter Property="Kind" Value="CheckCircle"/>
+                                                                                                                    <Setter Property="Foreground" Value="#4CAF50"/>
+                                                                                                                </DataTrigger>
+                                                                                                            </Style.Triggers>
+                                                                                                        </Style>
+                                                                                                    </md:PackIcon.Style>
+                                                                                                </md:PackIcon>
+                                                                                            </Button>
+                                                                                            <!-- Title -->
+                                                                                            <TextBox Grid.Column="2"
+                                                                                                     Text="{Binding Title, UpdateSourceTrigger=LostFocus}"
+                                                                                                     Background="Transparent" BorderThickness="0"
+                                                                                                     Foreground="{DynamicResource PrimaryForeground}"
+                                                                                                     FontSize="11.5" Padding="2,3" MinHeight="20"
+                                                                                                     VerticalContentAlignment="Center"
+                                                                                                     CaretBrush="{DynamicResource AccentBrush}"
+                                                                                                     LostFocus="CardSubTaskTitle_LostFocus">
+                                                                                                <TextBox.Style>
+                                                                                                    <Style TargetType="TextBox">
+                                                                                                        <Style.Triggers>
+                                                                                                            <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                                                                                <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                                                                                <Setter Property="Foreground" Value="{DynamicResource SecondaryForeground}"/>
+                                                                                                            </DataTrigger>
+                                                                                                        </Style.Triggers>
+                                                                                                    </Style>
+                                                                                                </TextBox.Style>
+                                                                                            </TextBox>
+                                                                                            <!-- Child progress badge -->
+                                                                                            <Border Grid.Column="3" CornerRadius="8"
+                                                                                                    Background="{DynamicResource AccentAlphaBrush}"
+                                                                                                    Padding="5,1" Margin="0,0,2,0" VerticalAlignment="Center"
+                                                                                                    Visibility="{Binding HasChildren, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                                                <TextBlock Text="{Binding ChildProgressText}"
+                                                                                                           FontSize="9" FontWeight="SemiBold"
+                                                                                                           Foreground="{DynamicResource AccentBrush}"/>
+                                                                                            </Border>
+                                                                                            <!-- Dots menu -->
+                                                                                            <Button Grid.Column="4" Style="{StaticResource FlatIconButton}"
+                                                                                                    Width="20" Height="22" Padding="0"
+                                                                                                    Tag="{Binding Source={StaticResource sharedCardProxy}, Path=Data}"
+                                                                                                    Click="CardSubDots_Click">
+                                                                                                <md:PackIcon Kind="DotsVertical" Width="11" Height="11"
+                                                                                                             Foreground="{DynamicResource SecondaryForeground}"/>
+                                                                                                <Button.ContextMenu>
+                                                                                                    <ContextMenu>
+                                                                                                        <MenuItem Header="Раскрыть/свернуть"
+                                                                                                                  Command="{Binding Path=PlacementTarget.Tag.ToggleSubExpandedCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                                                                  CommandParameter="{Binding Path=PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                                                                            <MenuItem.Icon>
+                                                                                                                <md:PackIcon Kind="UnfoldMoreHorizontal" Width="13" Height="13"/>
+                                                                                                            </MenuItem.Icon>
+                                                                                                        </MenuItem>
+                                                                                                        <MenuItem Header="Выполнена / Отменить"
+                                                                                                                  Command="{Binding Path=PlacementTarget.Tag.ToggleSubTaskCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                                                                  CommandParameter="{Binding Path=PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                                                                            <MenuItem.Icon>
+                                                                                                                <md:PackIcon Kind="CheckCircleOutline" Width="13" Height="13" Foreground="#4CAF50"/>
+                                                                                                            </MenuItem.Icon>
+                                                                                                        </MenuItem>
+                                                                                                        <Separator/>
+                                                                                                        <MenuItem Header="Удалить"
+                                                                                                                  Command="{Binding Path=PlacementTarget.Tag.RemoveSubTaskCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                                                                  CommandParameter="{Binding Path=PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                                                                  Foreground="#EF5350">
+                                                                                                            <MenuItem.Icon>
+                                                                                                                <md:PackIcon Kind="TrashCanOutline" Width="13" Height="13" Foreground="#EF5350"/>
+                                                                                                            </MenuItem.Icon>
+                                                                                                        </MenuItem>
+                                                                                                    </ContextMenu>
+                                                                                                </Button.ContextMenu>
+                                                                                            </Button>
+                                                                                        </Grid>
+                                                                                    </Border>
+                                                                                    <!-- Children (recursive) -->
+                                                                                    <Grid Grid.Row="1" Margin="10,0,0,0"
+                                                                                          Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                                        <Grid.ColumnDefinitions>
+                                                                                            <ColumnDefinition Width="10"/>
+                                                                                            <ColumnDefinition Width="*"/>
+                                                                                        </Grid.ColumnDefinitions>
+                                                                                        <Border Grid.Column="0" Width="1.5"
+                                                                                                Background="{DynamicResource AccentBrush}" Opacity="0.5"
+                                                                                                HorizontalAlignment="Center"/>
+                                                                                        <StackPanel Grid.Column="1">
+                                                                                            <ItemsControl ItemsSource="{Binding Children}"
+                                                                                                          ItemTemplate="{DynamicResource SharedCardSubTaskTemplate}"/>
+                                                                                            <Grid Margin="2,3,0,2">
+                                                                                                <Grid.ColumnDefinitions>
+                                                                                                    <ColumnDefinition Width="*"/>
+                                                                                                    <ColumnDefinition Width="Auto"/>
+                                                                                                </Grid.ColumnDefinitions>
+                                                                                                <TextBox Text="{Binding NewChildTitle, UpdateSourceTrigger=PropertyChanged}"
+                                                                                                         md:HintAssist.Hint="+ Создать подзадачу"
+                                                                                                         md:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                                                                                         md:HintAssist.IsFloating="False"
+                                                                                                         Foreground="{DynamicResource PrimaryForeground}"
+                                                                                                         CaretBrush="{DynamicResource PrimaryForeground}"
+                                                                                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                                                                         FontSize="11" Height="32" Padding="8,5"
+                                                                                                         VerticalContentAlignment="Center">
+                                                                                                    <TextBox.InputBindings>
+                                                                                                        <KeyBinding Key="Enter"
+                                                                                                                    Command="{Binding Source={StaticResource sharedCardProxy}, Path=Data.AddChildSubCommand}"
+                                                                                                                    CommandParameter="{Binding}"/>
+                                                                                                    </TextBox.InputBindings>
+                                                                                                </TextBox>
+                                                                                                <Button Grid.Column="1" Style="{StaticResource FlatIconButton}"
+                                                                                                        Command="{Binding Source={StaticResource sharedCardProxy}, Path=Data.AddChildSubCommand}"
+                                                                                                        CommandParameter="{Binding}"
+                                                                                                        Width="32" Height="32" Margin="3,0,0,0">
+                                                                                                    <md:PackIcon Kind="Plus" Width="13" Height="13"
+                                                                                                                 Foreground="{DynamicResource AccentBrush}"/>
+                                                                                                </Button>
+                                                                                            </Grid>
+                                                                                        </StackPanel>
+                                                                                    </Grid>
+                                                                                </Grid>
+                                                                            </DataTemplate>
+                                                                        </Border.Resources>
+                                                                        <StackPanel>
+                                                                            <ItemsControl ItemsSource="{Binding SubTasks}"
+                                                                                          ItemTemplate="{StaticResource SharedCardSubTaskTemplate}"/>
+                                                                            <!-- Add top-level subtask -->
+                                                                            <Grid Margin="0,5,0,2">
+                                                                                <Grid.ColumnDefinitions>
+                                                                                    <ColumnDefinition Width="*"/>
+                                                                                    <ColumnDefinition Width="Auto"/>
+                                                                                </Grid.ColumnDefinitions>
+                                                                                <TextBox Text="{Binding NewSubTaskTitle, UpdateSourceTrigger=PropertyChanged}"
+                                                                                         md:HintAssist.Hint="+ Создать подзадачу"
+                                                                                         md:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                                                                         md:HintAssist.IsFloating="False"
+                                                                                         Foreground="{DynamicResource PrimaryForeground}"
+                                                                                         CaretBrush="{DynamicResource PrimaryForeground}"
+                                                                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                                                         FontSize="11" Height="32" Padding="8,5"
+                                                                                         VerticalContentAlignment="Center">
+                                                                                    <TextBox.InputBindings>
+                                                                                        <KeyBinding Key="Enter" Command="{Binding AddTopSubTaskCommand}"/>
+                                                                                    </TextBox.InputBindings>
+                                                                                </TextBox>
+                                                                                <Button Grid.Column="1" Style="{StaticResource FlatIconButton}"
+                                                                                        Command="{Binding AddTopSubTaskCommand}"
+                                                                                        Width="32" Height="32" Margin="3,0,0,0">
+                                                                                    <md:PackIcon Kind="Plus" Width="13" Height="13"
+                                                                                                 Foreground="{DynamicResource AccentBrush}"/>
+                                                                                </Button>
+                                                                            </Grid>
+                                                                        </StackPanel>
+                                                                    </Border>
+
+                                                                    <!-- Add subtask button (when no subtasks yet) -->
+                                                                    <Button Style="{StaticResource FlatIconButton}"
+                                                                            Height="22" HorizontalAlignment="Left"
+                                                                            Command="{Binding ToggleSubTasksExpandedCommand}"
+                                                                            Visibility="{Binding HasSubTasks, Converter={StaticResource InvertedBoolToVisibilityConverter}}"
+                                                                            Margin="0,4,0,0">
+                                                                        <StackPanel Orientation="Horizontal">
+                                                                            <md:PackIcon Kind="PlusCircleOutline" Width="12" Height="12"
+                                                                                         Foreground="{DynamicResource SecondaryForeground}"
+                                                                                         VerticalAlignment="Center"/>
+                                                                            <TextBlock Text="Подзадача" FontSize="10.5"
+                                                                                       Foreground="{DynamicResource SecondaryForeground}"
+                                                                                       Margin="4,0,0,0" VerticalAlignment="Center"/>
+                                                                        </StackPanel>
+                                                                    </Button>
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Add column card -->
+                    <Border Width="240" Margin="0,0,12,0" CornerRadius="12" VerticalAlignment="Top"
+                            BorderThickness="2" Padding="0"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            Cursor="Hand">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource AccentAlpha2Brush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <!-- Show button when not editing -->
+                            <Button Style="{StaticResource FlatIconButton}"
+                                    Command="{Binding ToggleAddColumnDialogCommand}"
+                                    Height="52"
+                                    Visibility="{Binding ShowAddColumnDialog, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <md:PackIcon Kind="Plus" Width="16" Height="16"
+                                                 Foreground="{DynamicResource SecondaryForeground}"
+                                                 VerticalAlignment="Center"/>
+                                    <TextBlock Text="Создать колонку"
+                                               Foreground="{DynamicResource SecondaryForeground}"
+                                               FontSize="13" Margin="8,0,0,0"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <!-- Inline editor -->
+                            <Border Padding="12"
+                                    Visibility="{Binding ShowAddColumnDialog, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <StackPanel>
+                                    <TextBox Text="{Binding NewColumnName, UpdateSourceTrigger=PropertyChanged}"
+                                             md:HintAssist.Hint="Название колонки"
+                                             md:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                             md:HintAssist.IsFloating="False"
+                                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Foreground="{DynamicResource PrimaryForeground}"
+                                             CaretBrush="{DynamicResource PrimaryForeground}"
+                                             Height="40" FontSize="13"
+                                             VerticalContentAlignment="Center">
+                                        <TextBox.InputBindings>
+                                            <KeyBinding Key="Enter" Command="{Binding AddColumnCommand}"/>
+                                            <KeyBinding Key="Escape" Command="{Binding ToggleAddColumnDialogCommand}"/>
+                                        </TextBox.InputBindings>
+                                    </TextBox>
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                                                Command="{Binding AddColumnCommand}"
+                                                Content="Создать" FontSize="12" Height="32" Padding="14,0"/>
+                                        <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                                Command="{Binding ToggleAddColumnDialogCommand}"
+                                                Content="Отмена" FontSize="12" Height="32" Margin="6,0,0,0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Right panel: Chat -->
+        <Border Grid.Column="1" Width="360"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0"
+                Visibility="{Binding ChatPanel.IsOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <views:SharedChatPanelView DataContext="{Binding ChatPanel}"/>
+        </Border>
+    </Grid>
+</UserControl>
