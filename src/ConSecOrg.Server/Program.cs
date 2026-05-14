@@ -150,8 +150,8 @@ using (var scope = app.Services.CreateScope())
 // ── Pipeline ──────────────────────────────────────────────────────────────────
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-if (app.Environment.IsDevelopment())
-    app.MapOpenApi();   // доступен на /openapi/v1.json
+app.MapOpenApi();   // /openapi/v1.json — всегда доступен
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/openapi/v1.json", "ConSecOrg API v1")); // /swagger
 
 app.UseHttpsRedirection();
 app.UseSerilogRequestLogging();
