@@ -14,16 +14,28 @@
 
                 <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
                          materialDesign:HintAssist.Hint="Имя пользователя"
+                         materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                         Foreground="{DynamicResource PrimaryForeground}"
+                         CaretBrush="{DynamicResource PrimaryForeground}"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,12"/>
                 <TextBox Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}"
                          materialDesign:HintAssist.Hint="Email"
+                         materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                         Foreground="{DynamicResource PrimaryForeground}"
+                         CaretBrush="{DynamicResource PrimaryForeground}"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,12"/>
                 <PasswordBox x:Name="PwdBox"
                              materialDesign:HintAssist.Hint="Пароль (мин. 12 символов)"
+                             materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                             Foreground="{DynamicResource PrimaryForeground}"
+                             CaretBrush="{DynamicResource PrimaryForeground}"
                              Style="{StaticResource MaterialDesignOutlinedPasswordBox}"
                              PasswordChanged="PwdBox_PasswordChanged" Margin="0,0,0,12"/>
                 <PasswordBox x:Name="ConfirmPwdBox"
                              materialDesign:HintAssist.Hint="Подтвердите пароль"
+                             materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                             Foreground="{DynamicResource PrimaryForeground}"
+                             CaretBrush="{DynamicResource PrimaryForeground}"
                              Style="{StaticResource MaterialDesignOutlinedPasswordBox}"
                              PasswordChanged="ConfirmPwdBox_PasswordChanged" Margin="0,0,0,8"/>
 
