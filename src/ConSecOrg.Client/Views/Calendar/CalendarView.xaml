@@ -240,9 +240,36 @@
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate DataType="{x:Type vm:CalendarDayTask}">
                                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
-                                                                <Ellipse Width="7" Height="7" VerticalAlignment="Center"
-                                                                         Margin="1,0,4,0"
-                                                                         Fill="{Binding Color, Converter={StaticResource HexColorToBrushConverter}}"/>
+                                                                <!-- Dot for tasks, note-icon for notes -->
+                                                                <Grid Width="12" Height="12" VerticalAlignment="Center" Margin="1,0,3,0">
+                                                                    <Ellipse Width="7" Height="7" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                             Fill="{Binding Color, Converter={StaticResource HexColorToBrushConverter}}">
+                                                                        <Ellipse.Style>
+                                                                            <Style TargetType="Ellipse">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsNote}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Ellipse.Style>
+                                                                    </Ellipse>
+                                                                    <materialDesign:PackIcon Kind="NoteOutline" Width="11" Height="11"
+                                                                                             Foreground="#1E88E5"
+                                                                                             HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                        <materialDesign:PackIcon.Style>
+                                                                            <Style TargetType="materialDesign:PackIcon">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsNote}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </materialDesign:PackIcon.Style>
+                                                                    </materialDesign:PackIcon>
+                                                                </Grid>
                                                                 <TextBlock Text="{Binding Title}"
                                                                            FontSize="10"
                                                                            VerticalAlignment="Center"

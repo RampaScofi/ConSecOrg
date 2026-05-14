@@ -17,6 +17,7 @@ public class CalendarDayTask
     public string Title { get; init; } = string.Empty;
     public string Color { get; init; } = "#607D8B";
     public bool IsCompleted { get; init; }
+    public bool IsNote { get; init; }
 }
 
 public partial class CalendarDay : ObservableObject
@@ -71,7 +72,7 @@ public class WeekTaskItem
 
 public partial class CalendarViewModel(
     INotesApiService notesService,
-    ITasksApiService tasksService,
+    ITasksApiService tasksService,   // used only for tasks with explicit DueDate
     NavigationService navigation,
     TaskEditViewModel taskEditVm) : BasePageViewModel
 {
@@ -227,109 +228,97 @@ public partial class CalendarViewModel(
 
     private async Task LoadAsync()
     {
-        await LoadNotesAsync();
         await LoadMonthTasksAsync();
         await LoadWeekTasksAsync();
     }
 
-    private async Task LoadNotesAsync()
-    {
-        try
-        {
-            var result = await notesService.GetNotesAsync(pageSize: 500);
-            var countsByDate = result.Items
-                .GroupBy(n => n.UpdatedAt.Date)
-                .ToDictionary(g => g.Key, g => g.Count());
-
-            foreach (var day in Days)
-                day.NoteCount = countsByDate.TryGetValue(day.Date.Date, out var c) ? c : 0;
-        }
-        catch { /* non-critical */ }
-    }
-
+    // Month view: tasks with DueDate + notes in day cells
     private async Task LoadMonthTasksAsync()
     {
         var daySet = Days.ToDictionary(d => d.Date.Date);
-        foreach (var day in Days)
-            day.Tasks.Clear();
+        foreach (var day in Days) { day.Tasks.Clear(); day.NoteCount = 0; }
 
-        // Personal kanban tasks
+        // Only tasks that have an explicit DueDate
         try
         {
             var allTasks = await tasksService.GetBoardAsync();
-            foreach (var t in allTasks)
+            foreach (var t in allTasks.Where(t => t.DueDate.HasValue))
             {
-                var item = new CalendarDayTask
+                if (!daySet.TryGetValue(t.DueDate!.Value.Date, out var cell)) continue;
+                cell.Tasks.Add(new CalendarDayTask
                 {
                     Id = t.Id,
                     Title = t.Title,
                     Color = PriorityToColor(t.Priority),
-                    IsCompleted = t.Status == TaskStatusDto.Done
-                };
-                PlaceTask(item, t.DueDate, t.Status == TaskStatusDto.Done, daySet);
+                    IsCompleted = t.Status == TaskStatusDto.Done,
+                    IsNote = false
+                });
             }
         }
         catch { /* non-critical */ }
 
-        foreach (var day in Days)
-            day.RefreshTasks();
+        // Notes placed on their UpdatedAt date
+        try
+        {
+            var result = await notesService.GetNotesAsync(pageSize: 500);
+            foreach (var n in result.Items)
+            {
+                if (!daySet.TryGetValue(n.UpdatedAt.Date, out var cell)) continue;
+                cell.Tasks.Add(new CalendarDayTask
+                {
+                    Id = n.Id,
+                    Title = n.Title,
+                    Color = "#1E88E5",
+                    IsCompleted = false,
+                    IsNote = true
+                });
+                cell.NoteCount++;
+            }
+        }
+        catch { /* non-critical */ }
+
+        foreach (var day in Days) day.RefreshTasks();
     }
 
-    private static void PlaceTask(CalendarDayTask item, DateTime? dueDate, bool isCompleted,
-        Dictionary<DateTime, CalendarDay> daySet)
-    {
-        if (dueDate.HasValue)
-        {
-            // Show on DueDate
-            if (daySet.TryGetValue(dueDate.Value.Date, out var dueCal))
-                dueCal.Tasks.Add(item);
-        }
-        else if (!isCompleted)
-        {
-            // Active task without deadline — show on today if today is in current view
-            if (daySet.TryGetValue(DateTime.Today, out var todayCal))
-                todayCal.Tasks.Add(item);
-        }
-    }
-
+    // Week view: same logic
     private async Task LoadWeekTasksAsync()
     {
         var weekDaySet = WeekDays.ToDictionary(d => d.Date.Date);
-        foreach (var wd in WeekDays)
-            wd.Tasks.Clear();
+        foreach (var wd in WeekDays) wd.Tasks.Clear();
 
         try
         {
             var allTasks = await tasksService.GetBoardAsync();
-            foreach (var t in allTasks)
+            foreach (var t in allTasks.Where(t => t.DueDate.HasValue))
             {
-                var item = new WeekTaskItem
+                if (!weekDaySet.TryGetValue(t.DueDate!.Value.Date, out var wd)) continue;
+                wd.Tasks.Add(new WeekTaskItem
                 {
                     Id = t.Id,
                     Title = t.Title,
                     PriorityColor = PriorityToColor(t.Priority),
                     IsCompleted = t.Status == TaskStatusDto.Done
-                };
-                PlaceWeekTask(item, t.DueDate, t.Status == TaskStatusDto.Done, weekDaySet);
+                });
             }
         }
         catch { /* non-critical */ }
 
-    }
-
-    private static void PlaceWeekTask(WeekTaskItem item, DateTime? dueDate, bool isCompleted,
-        Dictionary<DateTime, WeekDayViewModel> weekDaySet)
-    {
-        if (dueDate.HasValue)
+        try
         {
-            if (weekDaySet.TryGetValue(dueDate.Value.Date, out var wd))
-                wd.Tasks.Add(item);
+            var result = await notesService.GetNotesAsync(pageSize: 500);
+            foreach (var n in result.Items)
+            {
+                if (!weekDaySet.TryGetValue(n.UpdatedAt.Date, out var wd)) continue;
+                wd.Tasks.Add(new WeekTaskItem
+                {
+                    Id = n.Id,
+                    Title = n.Title,
+                    PriorityColor = "#1E88E5",
+                    IsCompleted = false
+                });
+            }
         }
-        else if (!isCompleted)
-        {
-            if (weekDaySet.TryGetValue(DateTime.Today, out var wd))
-                wd.Tasks.Add(item);
-        }
+        catch { /* non-critical */ }
     }
 
     // ── Build helpers ─────────────────────────────────────────────────────────

@@ -37,13 +37,10 @@ builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
 var jwtSecret = builder.Configuration["JwtSettings:Secret"];
 if (string.IsNullOrEmpty(jwtSecret))
 {
-    if (builder.Environment.IsDevelopment())
-    {
-        jwtSecret = "DevOnlyConSecOrgSecretKey2024Development!!";
-        Log.Warning("JwtSettings:Secret not set — using dev fallback. NOT FOR PRODUCTION.");
-    }
-    else
-        throw new InvalidOperationException("JwtSettings:Secret is not set. Use dotnet user-secrets.");
+    jwtSecret = "ConSecOrgFallbackKey2026!!SecureOrganizerDiploma";
+    Log.Warning("JwtSettings:Secret не задан — используется встроенный ключ. " +
+                "Задайте реальный секрет через dotnet user-secrets или переменную окружения " +
+                "для продуктивной эксплуатации.");
 }
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

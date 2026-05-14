@@ -53,3 +53,10 @@ TestResults/
 # Publish profiles
 PublishProfiles/
 Properties/PublishProfiles/
+
+# Published binaries (too large for GitHub — build locally)
+publish/**/*.exe
+publish/**/*.dll
+publish/**/*.pdb
+publish/**/wwwroot/uploads/
+publish/Tests/
