@@ -64,3 +64,13 @@ publish/Tests/
 
 # Publish configs with secrets — only local
 publish/Server/appsettings.json
+
+# Other publish artifacts — generated at publish time, not needed in repo
+publish/**/*.json
+publish/**/*.config
+
+# User file uploads (runtime data, not source code)
+src/ConSecOrg.Server/uploads/
+
+# Claude / IDE meta — local only
+.claude/
