@@ -9,6 +9,7 @@
         xmlns:shellViews="clr-namespace:ConSecOrg.Client.Views.Shell"
         xmlns:tb="http://www.hardcodet.net/taskbar"
         Title="ConSecOrg — Защищённый органайзер"
+        Icon="Assets/Icons/app.ico"
         Height="780" Width="1280"
         MinHeight="600" MinWidth="900"
         WindowStartupLocation="CenterScreen"
@@ -36,6 +37,7 @@
     <Grid>
         <!-- System tray icon -->
         <tb:TaskbarIcon x:Name="TrayIcon"
+                        IconSource="/Assets/Icons/app.ico"
                         ToolTipText="ConSecOrg — Защищённый органайзер"
                         TrayLeftMouseDown="TrayIcon_TrayLeftMouseDown">
             <tb:TaskbarIcon.ContextMenu>

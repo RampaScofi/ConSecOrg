@@ -23,6 +23,17 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>consecorg-server-dev</UserSecretsId>
+    <ApplicationIcon>Resources\server.ico</ApplicationIcon>
+    <AssemblyTitle>ConSecOrg Server</AssemblyTitle>
+    <AssemblyDescription>Защищённый органайзер — серверная часть</AssemblyDescription>
+    <Product>ConSecOrg Server</Product>
+    <Company>СФУ ИКИТ</Company>
+    <Copyright>© 2025 Максутов Р.Ф.</Copyright>
+    <Version>1.0.0</Version>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="Resources\server.ico" CopyToOutputDirectory="PreserveNewest"/>
+  </ItemGroup>
 
 </Project>
