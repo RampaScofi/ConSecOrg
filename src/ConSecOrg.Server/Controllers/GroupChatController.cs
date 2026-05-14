@@ -1,6 +1,7 @@
 using ConSecOrg.Domain.Entities;
 using ConSecOrg.Infrastructure.Persistence;
 using ConSecOrg.Server.Hubs;
+using ConSecOrg.Server.Services;
 using ConSecOrg.Shared.DTOs.Projects;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +14,7 @@ namespace ConSecOrg.Server.Controllers;
 [ApiController]
 [Route("api/v1/groupchats")]
 [Authorize]
-public class GroupChatController(AppDbContext db, IHubContext<BoardHub> hub) : ControllerBase
+public class GroupChatController(AppDbContext db, IHubContext<BoardHub> hub, ChatEncryptionService chatCrypto) : ControllerBase
 {
     private Guid CurrentUserId => Guid.Parse(
         User.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -133,7 +134,49 @@ public class GroupChatController(AppDbContext db, IHubContext<BoardHub> hub) : C
             .OrderBy(m => m.SentAt)
             .ToListAsync(ct);
 
-        return Ok(messages.Select(MapMsgDto).ToList());
+        // Latest read timestamp from any OTHER member (for my own messages' read status)
+        var chatKey = $"group:{id:N}";
+        var latestOtherRead = await db.ChatLastReads.AsNoTracking()
+            .Where(r => r.ChatKey == chatKey && r.UserId != myId)
+            .MaxAsync(r => (DateTime?)r.LastReadAt, ct);
+
+        return Ok(messages.Select(m =>
+        {
+            var dto = MapMsgDto(m);
+            if (m.SenderUserId == myId && latestOtherRead.HasValue)
+                dto.IsReadByRecipient = m.SentAt <= latestOtherRead.Value;
+            return dto;
+        }).ToList());
+    }
+
+    public record RenameGroupChatRequest(string Name);
+    public record TransferOwnerRequest(Guid NewOwnerUserId);
+
+    [HttpPatch("{id:guid}/name")]
+    public async Task<IActionResult> Rename(Guid id, [FromBody] RenameGroupChatRequest body, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(body.Name)) return BadRequest(new { message = "Название не может быть пустым." });
+        var myId = CurrentUserId;
+        var g = await db.GroupChats.FirstOrDefaultAsync(g => g.Id == id, ct);
+        if (g is null) return NotFound();
+        if (g.CreatedByUserId != myId) return Forbid();
+        g.SetName(body.Name.Trim());
+        await db.SaveChangesAsync(ct);
+        return Ok();
+    }
+
+    [HttpPost("{id:guid}/transfer-owner")]
+    public async Task<IActionResult> TransferOwner(Guid id, [FromBody] TransferOwnerRequest body, CancellationToken ct)
+    {
+        var myId = CurrentUserId;
+        var g = await db.GroupChats.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == id, ct);
+        if (g is null) return NotFound();
+        if (g.CreatedByUserId != myId) return Forbid();
+        if (!g.Members.Any(m => m.UserId == body.NewOwnerUserId))
+            return BadRequest(new { message = "Пользователь не является участником группы." });
+        g.TransferOwnership(body.NewOwnerUserId);
+        await db.SaveChangesAsync(ct);
+        return Ok();
     }
 
     [HttpDelete("{id:guid}")]
@@ -161,13 +204,15 @@ public class GroupChatController(AppDbContext db, IHubContext<BoardHub> hub) : C
         }).ToList()
     };
 
-    private static ChatMessageDto MapMsgDto(ChatMessage m) => new()
+    private ChatMessageDto MapMsgDto(ChatMessage m) => new()
     {
         Id = m.Id,
         GroupChatId = m.GroupChatId,
         SenderUserId = m.SenderUserId,
         SenderUsername = m.Sender?.Username ?? string.Empty,
-        Text = m.Text,
+        Text = m.IsTextEncrypted
+            ? chatCrypto.Decrypt(m.TextCipher!, m.TextNonce!, m.TextHmac!)
+            : m.Text,
         SentAt = m.SentAt,
         AttachmentFileId = m.AttachmentFileId,
         AttachmentFileName = m.AttachmentFileName,

@@ -8,6 +8,7 @@ using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
+using System.Text.Json;
 
 namespace ConSecOrg.Client.ViewModels.Chats;
 
@@ -25,11 +26,13 @@ public partial class ChatMsgVm : ObservableObject
     [ObservableProperty] private string? _attachmentFileId;
     [ObservableProperty] private string? _attachmentFileName;
     [ObservableProperty] private long? _attachmentSize;
+    [ObservableProperty] private string? _attachmentUrl;
     [ObservableProperty] private MsgStatus _status = MsgStatus.Sent;
 
     public string SenderLetter => SenderUsername.Length > 0 ? SenderUsername[0].ToString().ToUpper() : "?";
     public string TimeDisplay => SentAt.ToLocalTime().ToString("HH:mm");
     public bool HasAttachment => !string.IsNullOrEmpty(AttachmentFileId);
+    public bool IsNonImageAttachment => HasAttachment && !IsImageAttachment;
     public bool IsImageAttachment => HasAttachment &&
         (AttachmentFileName?.EndsWith(".png", StringComparison.OrdinalIgnoreCase) == true ||
          AttachmentFileName?.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) == true ||
@@ -76,28 +79,38 @@ public partial class ChatSummaryVm : ObservableObject
     public Guid?   ProjectId    { get; init; }
     public Guid?   OtherUserId  { get; init; }
     public Guid?   GroupChatId  { get; init; }
-    public string  Title        { get; init; } = string.Empty;
+    public Guid?   OwnerUserId  { get; init; }
 
+    [ObservableProperty] private string _title = string.Empty;
     [ObservableProperty] private int      _unreadCount;
     [ObservableProperty] private string   _lastMessageText = string.Empty;
     [ObservableProperty] private DateTime? _lastMessageAt;
     [ObservableProperty] private string   _lastSenderUsername = string.Empty;
+    [ObservableProperty] private bool     _isPinned;
 
     public bool HasUnread => UnreadCount > 0;
     partial void OnUnreadCountChanged(int value) => OnPropertyChanged(nameof(HasUnread));
 
-    public static ChatSummaryVm FromDto(ChatSummaryDto dto) => new()
+    // Whether current user is owner (set by ChatsViewModel after load)
+    public bool IsGroupOwner { get; set; }
+    public bool IsGroupChat  => ChatType == "group";
+    public bool IsDirectChat => ChatType == "direct";
+
+    public static ChatSummaryVm FromDto(ChatSummaryDto dto, Guid? currentUserId = null) => new()
     {
         ChatId           = dto.ChatId,
         ChatType         = dto.ChatType,
         ProjectId        = dto.ProjectId,
         OtherUserId      = dto.OtherUserId,
         GroupChatId      = dto.GroupChatId,
+        OwnerUserId      = dto.OwnerUserId,
         Title            = dto.Title,
         LastMessageText  = dto.LastMessageText,
         LastMessageAt    = dto.LastMessageAt,
         LastSenderUsername = dto.LastSenderUsername,
-        UnreadCount      = dto.UnreadCount
+        UnreadCount      = dto.UnreadCount,
+        IsGroupOwner     = dto.ChatType == "group" && dto.OwnerUserId.HasValue
+                           && dto.OwnerUserId == currentUserId
     };
 }
 
@@ -119,11 +132,26 @@ public partial class ContactMemberVm : ObservableObject
     [ObservableProperty] private bool _isSelected;
 }
 
+// ── Member item in Manage Members dialog ──────────────────────────────────────
+public partial class ChatMemberItemVm : ObservableObject
+{
+    public Guid   UserId       { get; init; }
+    public string Username     { get; init; } = string.Empty;
+    [ObservableProperty] private bool _isOwner;
+    [ObservableProperty] private bool _isCurrentUser;
+    [ObservableProperty] private bool _canManage;
+
+    public string OwnerBadge   => IsOwner ? "Владелец" : string.Empty;
+    public bool   ShowOwnerBadge => IsOwner;
+    partial void OnIsOwnerChanged(bool value) => OnPropertyChanged(nameof(ShowOwnerBadge));
+}
+
 // ── Main ChatsViewModel ───────────────────────────────────────────────────────
 public partial class ChatsViewModel : ConSecOrg.Client.ViewModels.Base.BasePageViewModel
 {
     private readonly IChatApiService _api;
     private readonly IContactsApiService _contactsApi;
+    private readonly IUserSearchApiService _userSearchApi;
     private readonly Services.SharedProjectsHubClient _hub;
     private readonly SessionService _session;
     private readonly ModeService _mode;
@@ -165,19 +193,43 @@ public partial class ChatsViewModel : ConSecOrg.Client.ViewModels.Base.BasePageV
     public CreateGroupChatVm CreateGroupVm { get; } = new();
     [ObservableProperty] private string? _groupCreateError;
 
+    // ── Rename dialog ─────────────────────────────────────────────────────────
+    [ObservableProperty] private bool   _isRenameDialogOpen;
+    [ObservableProperty] private string _renameValue = string.Empty;
+    [ObservableProperty] private string? _renameError;
+    private ChatSummaryVm? _renamingChat;
+
+    // ── Members dialog ────────────────────────────────────────────────────────
+    [ObservableProperty] private bool _isMembersDialogOpen;
+    [ObservableProperty] private string? _membersError;
+    [ObservableProperty] private string  _addMemberUsername = string.Empty;
+    public ObservableCollection<ChatMemberItemVm> MemberItems { get; } = new();
+    private ChatSummaryVm? _managingChat;
+
+    // ── Pinned chats (local storage) ──────────────────────────────────────────
+    private HashSet<string> _pinnedChatIds = [];
+    private string PinnedChatsFile => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "ConSecOrg",
+        _session.CurrentUser?.Id.ToString() ?? "local",
+        "pinned_chats.json");
+
     // ── Scroll helper ─────────────────────────────────────────────────────────
     public event Action? ScrollToBottomRequested;
 
     public ChatsViewModel(IChatApiService api, IContactsApiService contactsApi,
+        IUserSearchApiService userSearchApi,
         Services.SharedProjectsHubClient hub, SessionService session, ModeService mode)
     {
         _api = api;
         _contactsApi = contactsApi;
+        _userSearchApi = userSearchApi;
         _hub = hub;
         _session = session;
         _mode = mode;
         _hub.ChatMessageReceived += OnIncomingMessage;
         _hub.MessagesRead += OnMessagesRead;
+        _hub.MessageDeleted += OnMessageDeleted;
     }
 
     public override async Task OnNavigatedToAsync() => await LoadChatsAsync();
@@ -188,16 +240,38 @@ public partial class ChatsViewModel : ConSecOrg.Client.ViewModels.Base.BasePageV
     {
         IsLoadingChats = true;
         StatusText = null;
+        LoadPinnedChats();
         try
         {
             await _hub.EnsureConnectedAsync();
+            var myId = _session.CurrentUser?.Id;
             var chats = await _api.GetChatsAsync();
             AllChats.Clear();
-            foreach (var c in chats) AllChats.Add(ChatSummaryVm.FromDto(c));
+            foreach (var c in chats)
+            {
+                var vm = ChatSummaryVm.FromDto(c, myId);
+                vm.IsPinned = _pinnedChatIds.Contains(vm.ChatId);
+                AllChats.Add(vm);
+            }
+            // Pinned chats first, then by last message time
+            SortChats();
             if (AllChats.Count == 0) StatusText = "Нет активных чатов";
         }
         catch (Exception ex) { StatusText = $"Ошибка загрузки: {ex.Message}"; }
         finally { IsLoadingChats = false; }
+    }
+
+    private void SortChats()
+    {
+        var sorted = AllChats
+            .OrderByDescending(c => c.IsPinned)
+            .ThenByDescending(c => c.LastMessageAt ?? DateTime.MinValue)
+            .ToList();
+        for (int i = 0; i < sorted.Count; i++)
+        {
+            var cur = AllChats.IndexOf(sorted[i]);
+            if (cur != i) AllChats.Move(cur, i);
+        }
     }
 
     // ── Open a chat from the list ─────────────────────────────────────────────
@@ -431,6 +505,213 @@ public partial class ChatsViewModel : ConSecOrg.Client.ViewModels.Base.BasePageV
 
     [RelayCommand] private void CancelCreateGroup() => CreateGroupVm.IsOpen = false;
 
+    // ── Pin / Unpin ───────────────────────────────────────────────────────────
+    [RelayCommand]
+    private void TogglePinChat(ChatSummaryVm? chat)
+    {
+        if (chat is null) return;
+        chat.IsPinned = !chat.IsPinned;
+        if (chat.IsPinned) _pinnedChatIds.Add(chat.ChatId);
+        else               _pinnedChatIds.Remove(chat.ChatId);
+        SavePinnedChats();
+        SortChats();
+    }
+
+    // ── Rename ────────────────────────────────────────────────────────────────
+    [RelayCommand]
+    private void OpenRenameChat(ChatSummaryVm? chat)
+    {
+        if (chat is null || chat.ChatType != "group") return;
+        _renamingChat   = chat;
+        RenameValue     = chat.Title;
+        RenameError     = null;
+        IsRenameDialogOpen = true;
+    }
+
+    [RelayCommand]
+    private async Task ConfirmRenameChatAsync()
+    {
+        if (string.IsNullOrWhiteSpace(RenameValue)) { RenameError = "Введите название"; return; }
+        if (_renamingChat?.GroupChatId is null) return;
+        RenameError = null;
+        try
+        {
+            await _api.RenameGroupChatAsync(_renamingChat.GroupChatId.Value, RenameValue.Trim());
+            _renamingChat.Title = RenameValue.Trim();
+            if (ActiveChatSummary?.ChatId == _renamingChat.ChatId)
+                ActiveChatTitle = _renamingChat.Title;
+            IsRenameDialogOpen = false;
+        }
+        catch (Exception ex) { RenameError = ex.Message; }
+    }
+
+    [RelayCommand] private void CancelRenameChat() => IsRenameDialogOpen = false;
+
+    // ── Delete chat ───────────────────────────────────────────────────────────
+    [RelayCommand]
+    private async Task DeleteChatAsync(ChatSummaryVm? chat)
+    {
+        if (chat is null) return;
+        var msg = chat.ChatType == "group"
+            ? $"Удалить групповой чат «{chat.Title}»? Все сообщения будут потеряны."
+            : $"Удалить переписку с «{chat.Title}»?";
+        if (System.Windows.MessageBox.Show(msg, "Удалить чат",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning) != System.Windows.MessageBoxResult.Yes) return;
+
+        if (chat.ChatType == "group" && chat.GroupChatId.HasValue)
+        {
+            try { await _api.DeleteGroupChatAsync(chat.GroupChatId.Value); }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(ex.Message, "Ошибка", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                return;
+            }
+        }
+
+        AllChats.Remove(chat);
+        if (ActiveChatSummary?.ChatId == chat.ChatId) CloseChat();
+    }
+
+    // ── Manage members (group chats) ──────────────────────────────────────────
+    [RelayCommand]
+    private async Task OpenManageMembersAsync(ChatSummaryVm? chat)
+    {
+        if (chat is null || !chat.GroupChatId.HasValue) return;
+        _managingChat = chat;
+        MemberItems.Clear();
+        MembersError = null;
+        AddMemberUsername = string.Empty;
+        try
+        {
+            var dto = await _api.GetGroupChatAsync(chat.GroupChatId.Value);
+            foreach (var m in dto.Members)
+                MemberItems.Add(new ChatMemberItemVm
+                {
+                    UserId       = m.UserId,
+                    Username     = m.Username,
+                    IsOwner      = m.UserId == dto.CreatedByUserId,
+                    IsCurrentUser = m.UserId == _session.CurrentUser?.Id,
+                    CanManage    = chat.IsGroupOwner && m.UserId != _session.CurrentUser?.Id
+                });
+            IsMembersDialogOpen = true;
+        }
+        catch (Exception ex) { MembersError = ex.Message; }
+    }
+
+    [RelayCommand]
+    private async Task AddMemberAsync()
+    {
+        if (string.IsNullOrWhiteSpace(AddMemberUsername) || _managingChat?.GroupChatId is null) return;
+        MembersError = null;
+        try
+        {
+            // Search user by username
+            var users = await _userSearchApi.SearchUsersAsync(AddMemberUsername.Trim());
+            var target = users.FirstOrDefault();
+            if (target is null) { MembersError = "Пользователь не найден"; return; }
+            if (MemberItems.Any(m => m.UserId == target.Id)) { MembersError = "Уже участник"; return; }
+
+            await _api.AddGroupChatMemberAsync(_managingChat.GroupChatId.Value, target.Id);
+            MemberItems.Add(new ChatMemberItemVm
+            {
+                UserId       = target.Id,
+                Username     = target.Username,
+                IsOwner      = false,
+                IsCurrentUser = target.Id == _session.CurrentUser?.Id,
+                CanManage    = _managingChat.IsGroupOwner
+            });
+            AddMemberUsername = string.Empty;
+        }
+        catch (Exception ex) { MembersError = ex.Message; }
+    }
+
+    [RelayCommand]
+    private async Task RemoveMemberAsync(ChatMemberItemVm? member)
+    {
+        if (member is null || _managingChat?.GroupChatId is null) return;
+        MembersError = null;
+        try
+        {
+            await _api.RemoveGroupChatMemberAsync(_managingChat.GroupChatId.Value, member.UserId);
+            MemberItems.Remove(member);
+        }
+        catch (Exception ex) { MembersError = ex.Message; }
+    }
+
+    [RelayCommand]
+    private async Task TransferOwnershipAsync(ChatMemberItemVm? member)
+    {
+        if (member is null || _managingChat?.GroupChatId is null) return;
+        if (System.Windows.MessageBox.Show(
+                $"Передать права владельца пользователю «{member.Username}»?",
+                "Подтверждение",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Question) != System.Windows.MessageBoxResult.Yes) return;
+        MembersError = null;
+        try
+        {
+            await _api.TransferGroupOwnershipAsync(_managingChat.GroupChatId.Value, member.UserId);
+            // Update local state
+            foreach (var m in MemberItems) { m.IsOwner = m.UserId == member.UserId; m.CanManage = false; }
+            _managingChat.IsGroupOwner = false;
+            IsMembersDialogOpen = false;
+        }
+        catch (Exception ex) { MembersError = ex.Message; }
+    }
+
+    [RelayCommand] private void CloseMembersDialog() => IsMembersDialogOpen = false;
+
+    // ── Message actions ───────────────────────────────────────────────────────
+    [RelayCommand]
+    private static void CopyMessageText(ChatMsgVm? msg)
+    {
+        if (string.IsNullOrEmpty(msg?.Text)) return;
+        System.Windows.Clipboard.SetText(msg.Text);
+    }
+
+    [RelayCommand]
+    private async Task DeleteMessageAsync(ChatMsgVm? msg)
+    {
+        if (msg is null) return;
+        try
+        {
+            await _api.DeleteChatMessageAsync(msg.Id);
+            RemoveMessageLocally(msg.Id);
+        }
+        catch (Exception ex) { StatusText = $"Не удалось удалить: {ex.Message}"; }
+    }
+
+    private void RemoveMessageLocally(Guid messageId)
+    {
+        var vm = _rawMessages.FirstOrDefault(m => m.Id == messageId);
+        if (vm is null) return;
+        _rawMessages.Remove(vm);
+        RebuildChatItems();
+    }
+
+    // ── Pin storage helpers ───────────────────────────────────────────────────
+    private void LoadPinnedChats()
+    {
+        try
+        {
+            if (!File.Exists(PinnedChatsFile)) { _pinnedChatIds = []; return; }
+            var json = File.ReadAllText(PinnedChatsFile);
+            _pinnedChatIds = JsonSerializer.Deserialize<HashSet<string>>(json) ?? [];
+        }
+        catch { _pinnedChatIds = []; }
+    }
+
+    private void SavePinnedChats()
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(PinnedChatsFile)!);
+            File.WriteAllText(PinnedChatsFile, JsonSerializer.Serialize(_pinnedChatIds));
+        }
+        catch { }
+    }
+
     // ── Incoming message handler (SignalR) ────────────────────────────────────
     private void OnIncomingMessage(ChatMessageDto msg)
     {
@@ -502,6 +783,12 @@ public partial class ChatsViewModel : ConSecOrg.Client.ViewModels.Base.BasePageV
             foreach (var msg in _rawMessages.Where(m => m.IsMine && m.Status == MsgStatus.Sent))
                 msg.Status = MsgStatus.Read;
         });
+    }
+
+    // Fired when a message is deleted (by its sender, from another device or by someone else)
+    private void OnMessageDeleted(Guid messageId)
+    {
+        System.Windows.Application.Current.Dispatcher.BeginInvoke(() => RemoveMessageLocally(messageId));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -578,6 +865,8 @@ public partial class ChatsViewModel : ConSecOrg.Client.ViewModels.Base.BasePageV
         AttachmentFileId   = m.AttachmentFileId,
         AttachmentFileName = m.AttachmentFileName,
         AttachmentSize     = m.AttachmentSize,
+        AttachmentUrl      = string.IsNullOrEmpty(m.AttachmentFileId) ? null
+                             : $"{_mode.ServerUrl.TrimEnd('/')}/api/v1/files/{m.AttachmentFileId}",
         Status             = m.IsReadByRecipient ? MsgStatus.Read : MsgStatus.Sent
     };
 }

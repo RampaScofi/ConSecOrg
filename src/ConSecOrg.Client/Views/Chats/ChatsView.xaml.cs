@@ -36,4 +36,16 @@ public partial class ChatsView : UserControl
             cm.IsOpen = true;
         }
     }
+
+    private void ChatOptionsBtn_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true; // prevent outer chat-open button from firing
+        if (sender is Button btn && btn.ContextMenu is ContextMenu cm)
+        {
+            cm.DataContext = DataContext; // ChatsViewModel
+            cm.PlacementTarget = btn;    // btn.DataContext = ChatSummaryVm
+            cm.Placement = System.Windows.Controls.Primitives.PlacementMode.Left;
+            cm.IsOpen = true;
+        }
+    }
 }

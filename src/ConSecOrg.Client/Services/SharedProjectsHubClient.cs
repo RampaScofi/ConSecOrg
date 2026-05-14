@@ -36,6 +36,8 @@ public sealed class SharedProjectsHubClient : IAsyncDisposable
     // Fired when the remote user has read our messages in a direct chat
     // Payload is the chatKey from our perspective: "user:{theirId:N}"
     public event Action<string>? MessagesRead;
+    // Fired when any message is deleted (sender deleted their own message)
+    public event Action<Guid>? MessageDeleted;
 
     public bool IsConnected => _connection?.State == HubConnectionState.Connected;
 
@@ -66,6 +68,7 @@ public sealed class SharedProjectsHubClient : IAsyncDisposable
 
             _connection.On<ChatMessageDto>("ChatMessageReceived", m => ChatMessageReceived?.Invoke(m));
             _connection.On<string>("MessagesRead", chatKey => MessagesRead?.Invoke(chatKey));
+            _connection.On<Guid>("MessageDeleted", id => MessageDeleted?.Invoke(id));
 
             _connection.Reconnected += async _ =>
             {

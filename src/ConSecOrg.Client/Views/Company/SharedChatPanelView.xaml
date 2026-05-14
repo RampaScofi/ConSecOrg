@@ -247,20 +247,24 @@
                         Click="EmojiBtn_Click" ToolTip="Смайлики">
                     <TextBlock Text="😊" FontSize="18" VerticalAlignment="Center"/>
                     <Button.ContextMenu>
-                        <ContextMenu MaxHeight="220" MaxWidth="340">
-                            <MenuItem IsEnabled="False">
+                        <ContextMenu MaxHeight="220" MaxWidth="348" Padding="4">
+                            <MenuItem Focusable="False">
+                                <MenuItem.Template>
+                                    <ControlTemplate TargetType="MenuItem">
+                                        <ContentPresenter ContentSource="Header"/>
+                                    </ControlTemplate>
+                                </MenuItem.Template>
                                 <MenuItem.Header>
-                                    <ItemsControl ItemsSource="{Binding DataContext.CommonEmojis,
-                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                    <ItemsControl ItemsSource="{Binding CommonEmojis}"
+                                                  Tag="{Binding InsertEmojiCommand}">
                                         <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate><WrapPanel MaxWidth="320"/></ItemsPanelTemplate>
+                                            <ItemsPanelTemplate><WrapPanel Width="320"/></ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Button Content="{Binding}" FontSize="18" Width="32" Height="32" Padding="0"
                                                         Style="{StaticResource MaterialDesignFlatButton}"
-                                                        Command="{Binding DataContext.InsertEmojiCommand,
-                                                                  RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                        Command="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                         CommandParameter="{Binding}"/>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>

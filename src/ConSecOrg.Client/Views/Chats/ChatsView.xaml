@@ -49,384 +49,694 @@
             </Border>
         </materialDesign:DialogHost.DialogContent>
 
-        <!-- ═══ Main chat layout ═════════════════════════════════════════════════ -->
+        <!-- Outer wrapper: main layout + overlays all stacked -->
         <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="280" MinWidth="220"/>
-                <ColumnDefinition Width="1"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
 
-            <!-- ── LEFT: Chat list ──────────────────────────────────────────────── -->
-            <Grid Grid.Column="0" Background="{DynamicResource SecondaryBackground}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+            <!-- ═══ Main chat layout ═════════════════════════════════════════════ -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="280" MinWidth="220"/>
+                    <ColumnDefinition Width="1"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-                <Border Grid.Row="0" Padding="16,12"
-                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-                    <Grid>
-                        <TextBlock Text="Чаты" Style="{StaticResource PageTitle}" Margin="0" VerticalAlignment="Center"/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Style="{StaticResource MaterialDesignIconButton}"
-                                    Command="{Binding OpenCreateGroupCommand}"
-                                    ToolTip="Создать групповой чат">
-                                <materialDesign:PackIcon Kind="AccountMultiplePlus" Width="18" Height="18"/>
-                            </Button>
-                            <Button Style="{StaticResource MaterialDesignIconButton}"
-                                    Command="{Binding LoadChatsCommand}" ToolTip="Обновить">
-                                <materialDesign:PackIcon Kind="Refresh" Width="18" Height="18"/>
-                            </Button>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                        <ProgressBar IsIndeterminate="True" Height="2"
-                                     Visibility="{Binding IsLoadingChats, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                        <TextBlock Text="{Binding StatusText}"
-                                   Visibility="{Binding StatusText, Converter={StaticResource NullToVisibilityConverter}}"
-                                   Foreground="{DynamicResource SecondaryForeground}"
-                                   FontSize="12" Margin="16,12" TextWrapping="Wrap"/>
-
-                        <ItemsControl ItemsSource="{Binding AllChats}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Button Style="{StaticResource FlatIconButton}"
-                                            HorizontalContentAlignment="Stretch"
-                                            HorizontalAlignment="Stretch"
-                                            Padding="12,8"
-                                            Command="{Binding DataContext.OpenChatCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                            CommandParameter="{Binding}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="40"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-
-                                            <!-- Avatar icon -->
-                                            <Border Grid.Column="0" Width="38" Height="38" CornerRadius="19"
-                                                    Background="{DynamicResource AccentAlpha2Brush}"
-                                                    VerticalAlignment="Center">
-                                                <materialDesign:PackIcon Width="18" Height="18"
-                                                                         Foreground="{DynamicResource AccentBrush}"
-                                                                         HorizontalAlignment="Center"
-                                                                         VerticalAlignment="Center">
-                                                    <materialDesign:PackIcon.Style>
-                                                        <Style TargetType="materialDesign:PackIcon">
-                                                            <Setter Property="Kind" Value="AccountGroupOutline"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding ChatType}" Value="direct">
-                                                                    <Setter Property="Kind" Value="AccountCircleOutline"/>
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ChatType}" Value="project">
-                                                                    <Setter Property="Kind" Value="FolderAccountOutline"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </materialDesign:PackIcon.Style>
-                                                </materialDesign:PackIcon>
-                                            </Border>
-
-                                            <!-- Name + last message -->
-                                            <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Title}"
-                                                           FontWeight="Medium" FontSize="13"
-                                                           Foreground="{DynamicResource PrimaryForeground}"
-                                                           TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock Foreground="{DynamicResource SecondaryForeground}"
-                                                           FontSize="11" TextTrimming="CharacterEllipsis"
-                                                           Text="{Binding LastMessageText}"/>
-                                            </StackPanel>
-
-                                            <!-- Unread badge -->
-                                            <Border Grid.Column="2" VerticalAlignment="Center"
-                                                    MinWidth="20" Height="20" CornerRadius="10"
-                                                    Padding="5,0"
-                                                    Background="{DynamicResource AccentBrush}"
-                                                    Visibility="{Binding HasUnread, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                <TextBlock Text="{Binding UnreadCount}"
-                                                           FontSize="10" FontWeight="Bold"
-                                                           Foreground="White"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"/>
-                                            </Border>
-                                        </Grid>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </ScrollViewer>
-            </Grid>
-
-            <!-- Divider -->
-            <Border Grid.Column="1" Background="{DynamicResource BorderBrush}"/>
-
-            <!-- ── RIGHT: Active chat ────────────────────────────────────────────── -->
-            <Grid Grid.Column="2">
-                <!-- No chat selected -->
-                <StackPanel Visibility="{Binding HasChatOpen, Converter={StaticResource InvertedBoolToVisibilityConverter}}"
-                            HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <materialDesign:PackIcon Kind="ChatOutline" Width="72" Height="72"
-                                             Foreground="{DynamicResource SecondaryForeground}"
-                                             HorizontalAlignment="Center" Opacity="0.35"/>
-                    <TextBlock Text="Выберите чат из списка слева"
-                               Foreground="{DynamicResource SecondaryForeground}"
-                               FontSize="14" HorizontalAlignment="Center" Margin="0,16,0,0"/>
-                    <TextBlock Text="Или создайте новый групповой чат ↑"
-                               Foreground="{DynamicResource SecondaryForeground}"
-                               FontSize="12" HorizontalAlignment="Center" Margin="0,6,0,0" Opacity="0.6"/>
-                </StackPanel>
-
-                <!-- Active chat -->
-                <Grid Visibility="{Binding HasChatOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                <!-- ── LEFT: Chat list ──────────────────────────────────────── -->
+                <Grid Grid.Column="0" Background="{DynamicResource SecondaryBackground}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Chat header -->
-                    <Border Grid.Row="0" Padding="16,10"
-                            Background="{DynamicResource SecondaryBackground}"
+                    <Border Grid.Row="0" Padding="16,12"
                             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
                         <Grid>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <materialDesign:PackIcon Kind="ChatProcessingOutline" Width="20" Height="20"
-                                                         Foreground="{DynamicResource AccentBrush}"
-                                                         VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                <TextBlock Text="{Binding ActiveChatTitle}" FontSize="15" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource PrimaryForeground}" VerticalAlignment="Center"/>
+                            <TextBlock Text="Чаты" Style="{StaticResource PageTitle}" Margin="0" VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Style="{StaticResource MaterialDesignIconButton}"
+                                        Command="{Binding OpenCreateGroupCommand}"
+                                        ToolTip="Создать групповой чат">
+                                    <materialDesign:PackIcon Kind="AccountMultiplePlus" Width="18" Height="18"/>
+                                </Button>
+                                <Button Style="{StaticResource MaterialDesignIconButton}"
+                                        Command="{Binding LoadChatsCommand}" ToolTip="Обновить">
+                                    <materialDesign:PackIcon Kind="Refresh" Width="18" Height="18"/>
+                                </Button>
                             </StackPanel>
-                            <Button HorizontalAlignment="Right"
-                                    Style="{StaticResource MaterialDesignIconButton}"
-                                    Command="{Binding CloseChatCommand}" ToolTip="Закрыть чат">
-                                <materialDesign:PackIcon Kind="Close" Width="16" Height="16"/>
-                            </Button>
                         </Grid>
                     </Border>
 
-                    <!-- Messages -->
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                                  x:Name="MessagesScroll" Padding="16,8">
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
-                            <ProgressBar IsIndeterminate="True" Height="2" Margin="0,0,0,8"
-                                         Visibility="{Binding IsLoadingMessages, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            <ProgressBar IsIndeterminate="True" Height="2"
+                                         Visibility="{Binding IsLoadingChats, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            <TextBlock Text="{Binding StatusText}"
+                                       Visibility="{Binding StatusText, Converter={StaticResource NullToVisibilityConverter}}"
+                                       Foreground="{DynamicResource SecondaryForeground}"
+                                       FontSize="12" Margin="16,12" TextWrapping="Wrap"/>
 
-                            <!-- ChatItems: either date separator or message -->
-                            <ItemsControl ItemsSource="{Binding ChatItems}">
+                            <ItemsControl ItemsSource="{Binding AllChats}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <StackPanel>
+                                        <Button Style="{StaticResource FlatIconButton}"
+                                                HorizontalContentAlignment="Stretch"
+                                                HorizontalAlignment="Stretch"
+                                                Padding="12,8"
+                                                Command="{Binding DataContext.OpenChatCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="40"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
 
-                                            <!-- ── Date separator ─────────────────────────────── -->
-                                            <Border HorizontalAlignment="Center"
-                                                    Margin="0,12,0,6" Padding="12,4" CornerRadius="10"
-                                                    Background="{DynamicResource SecondaryBackground}"
-                                                    Visibility="{Binding IsSeparator, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                <TextBlock Text="{Binding DateLabel}"
-                                                           FontSize="11"
-                                                           Foreground="{DynamicResource SecondaryForeground}"
-                                                           HorizontalAlignment="Center"/>
-                                            </Border>
-
-                                            <!-- ── Message ────────────────────────────────────── -->
-                                            <Grid Margin="0,3"
-                                                  Visibility="{Binding IsMessage, Converter={StaticResource BoolToVisibilityConverter}}">
-
-                                                <!-- Mine (right) -->
-                                                <Border HorizontalAlignment="Right" MaxWidth="440"
-                                                        CornerRadius="12,2,12,12" Padding="12,8"
-                                                        Background="{DynamicResource AccentBrush}"
-                                                        Visibility="{Binding Message.IsMine, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                    <StackPanel>
-                                                        <TextBlock Text="{Binding Message.Text}"
-                                                                   Foreground="White" FontSize="13"
-                                                                   TextWrapping="Wrap"
-                                                                   Visibility="{Binding Message.Text, Converter={StaticResource NullToVisibilityConverter}}"/>
-                                                        <!-- Attachment -->
-                                                        <Border Visibility="{Binding Message.HasAttachment, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                                Background="#33000000" CornerRadius="6" Padding="10,7" Margin="0,4,0,0">
-                                                            <Button Style="{StaticResource FlatIconButton}" Padding="0"
-                                                                    Command="{Binding DataContext.DownloadFileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                    CommandParameter="{Binding Message}">
-                                                                <StackPanel Orientation="Horizontal">
-                                                                    <materialDesign:PackIcon Kind="FileDownloadOutline" Width="20" Height="20"
-                                                                                             Foreground="White" VerticalAlignment="Center"/>
-                                                                    <StackPanel Margin="8,0,0,0">
-                                                                        <TextBlock Text="{Binding Message.AttachmentFileName}"
-                                                                                   Foreground="White" FontSize="12" FontWeight="Medium"/>
-                                                                        <TextBlock Text="{Binding Message.FileSizeDisplay}"
-                                                                                   Foreground="#CCFFFFFF" FontSize="10"/>
-                                                                    </StackPanel>
-                                                                </StackPanel>
-                                                            </Button>
-                                                        </Border>
-                                                        <!-- Time + status icons -->
-                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
-                                                            <TextBlock Text="{Binding Message.TimeDisplay}"
-                                                                       Foreground="#AAFFFFFF" FontSize="10"
-                                                                       VerticalAlignment="Center"/>
-                                                            <!-- Sending (clock) -->
-                                                            <materialDesign:PackIcon Kind="ClockOutline"
-                                                                Width="12" Height="12" Margin="4,0,0,0"
-                                                                Foreground="#AAFFFFFF" VerticalAlignment="Center"
-                                                                Visibility="{Binding Message.IsSending, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                                            <!-- Sent (single check) -->
-                                                            <materialDesign:PackIcon Kind="Check"
-                                                                Width="12" Height="12" Margin="4,0,0,0"
-                                                                Foreground="#AAFFFFFF" VerticalAlignment="Center"
-                                                                Visibility="{Binding Message.IsSent, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                                            <!-- Read (double check, green) -->
-                                                            <materialDesign:PackIcon Kind="CheckAll"
-                                                                Width="14" Height="14" Margin="4,0,0,0"
-                                                                Foreground="#4CAF50" VerticalAlignment="Center"
-                                                                Visibility="{Binding Message.IsRead, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                                            <!-- Failed (red !) -->
-                                                            <materialDesign:PackIcon Kind="AlertCircleOutline"
-                                                                Width="13" Height="13" Margin="4,0,0,0"
-                                                                Foreground="#EF5350" VerticalAlignment="Center"
-                                                                Visibility="{Binding Message.IsFailed, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                                        </StackPanel>
-                                                    </StackPanel>
+                                                <!-- Avatar -->
+                                                <Border Grid.Column="0" Width="38" Height="38" CornerRadius="19"
+                                                        Background="{DynamicResource AccentAlpha2Brush}"
+                                                        VerticalAlignment="Center">
+                                                    <materialDesign:PackIcon Width="18" Height="18"
+                                                                             Foreground="{DynamicResource AccentBrush}"
+                                                                             HorizontalAlignment="Center"
+                                                                             VerticalAlignment="Center">
+                                                        <materialDesign:PackIcon.Style>
+                                                            <Style TargetType="materialDesign:PackIcon">
+                                                                <Setter Property="Kind" Value="AccountGroupOutline"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding ChatType}" Value="direct">
+                                                                        <Setter Property="Kind" Value="AccountCircleOutline"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding ChatType}" Value="project">
+                                                                        <Setter Property="Kind" Value="FolderAccountOutline"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </materialDesign:PackIcon.Style>
+                                                    </materialDesign:PackIcon>
                                                 </Border>
 
-                                                <!-- Other (left) -->
-                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left"
-                                                            Visibility="{Binding Message.IsMine, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
-                                                    <Border Width="32" Height="32" CornerRadius="16"
-                                                            Background="{DynamicResource AccentAlpha2Brush}"
-                                                            VerticalAlignment="Bottom" Margin="0,0,8,0">
-                                                        <TextBlock Text="{Binding Message.SenderLetter}"
-                                                                   FontSize="12" FontWeight="Bold"
-                                                                   Foreground="{DynamicResource AccentBrush}"
-                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                    </Border>
-                                                    <Border MaxWidth="440" CornerRadius="2,12,12,12"
-                                                            Padding="12,8" Background="{DynamicResource CardBackground}">
-                                                        <StackPanel>
-                                                            <TextBlock Text="{Binding Message.SenderUsername}"
-                                                                       Foreground="{DynamicResource AccentBrush}"
-                                                                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
-                                                            <TextBlock Text="{Binding Message.Text}"
-                                                                       Foreground="{DynamicResource PrimaryForeground}"
-                                                                       FontSize="13" TextWrapping="Wrap"
-                                                                       Visibility="{Binding Message.Text, Converter={StaticResource NullToVisibilityConverter}}"/>
-                                                            <!-- Attachment -->
-                                                            <Border Visibility="{Binding Message.HasAttachment, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                                    Background="{DynamicResource AccentAlpha2Brush}"
-                                                                    CornerRadius="6" Padding="10,7" Margin="0,4,0,0">
-                                                                <Button Style="{StaticResource FlatIconButton}" Padding="0"
-                                                                        Command="{Binding DataContext.DownloadFileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                        CommandParameter="{Binding Message}">
-                                                                    <StackPanel Orientation="Horizontal">
-                                                                        <materialDesign:PackIcon Kind="FileDownloadOutline" Width="20" Height="20"
-                                                                                                 Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                                                                        <StackPanel Margin="8,0,0,0">
-                                                                            <TextBlock Text="{Binding Message.AttachmentFileName}"
-                                                                                       Foreground="{DynamicResource PrimaryForeground}"
-                                                                                       FontSize="12" FontWeight="Medium"/>
-                                                                            <TextBlock Text="{Binding Message.FileSizeDisplay}"
-                                                                                       Foreground="{DynamicResource SecondaryForeground}" FontSize="10"/>
-                                                                        </StackPanel>
-                                                                    </StackPanel>
-                                                                </Button>
-                                                            </Border>
-                                                            <TextBlock Text="{Binding Message.TimeDisplay}"
-                                                                       Foreground="{DynamicResource SecondaryForeground}"
-                                                                       FontSize="10" HorizontalAlignment="Right" Margin="0,4,0,0"/>
-                                                        </StackPanel>
-                                                    </Border>
+                                                <!-- Name + last message + pin indicator -->
+                                                <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <materialDesign:PackIcon Kind="Pin" Width="10" Height="10"
+                                                                                 Foreground="{DynamicResource AccentBrush}"
+                                                                                 VerticalAlignment="Center" Margin="0,0,4,0"
+                                                                                 Visibility="{Binding IsPinned, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   FontWeight="Medium" FontSize="13"
+                                                                   Foreground="{DynamicResource PrimaryForeground}"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                    </StackPanel>
+                                                    <TextBlock Foreground="{DynamicResource SecondaryForeground}"
+                                                               FontSize="11" TextTrimming="CharacterEllipsis"
+                                                               Text="{Binding LastMessageText}"/>
                                                 </StackPanel>
 
+                                                <!-- Unread badge + ⋮ options button -->
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                                            VerticalAlignment="Center" Margin="0,0,2,0">
+                                                    <Border MinWidth="20" Height="20" CornerRadius="10"
+                                                            Padding="5,0" Margin="0,0,4,0"
+                                                            Background="{DynamicResource AccentBrush}"
+                                                            Visibility="{Binding HasUnread, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <TextBlock Text="{Binding UnreadCount}"
+                                                                   FontSize="10" FontWeight="Bold"
+                                                                   Foreground="White"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center"/>
+                                                    </Border>
+
+                                                    <!-- ⋮ Three-dot menu -->
+                                                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                                                            Width="26" Height="26" Padding="0"
+                                                            VerticalAlignment="Center"
+                                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            Click="ChatOptionsBtn_Click"
+                                                            ToolTip="Действия с чатом">
+                                                        <materialDesign:PackIcon Kind="DotsVertical" Width="14" Height="14"/>
+                                                        <Button.ContextMenu>
+                                                            <ContextMenu>
+                                                                <!-- Pin / Unpin -->
+                                                                <MenuItem Command="{Binding DataContext.TogglePinChatCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                                    <MenuItem.Header>
+                                                                        <TextBlock>
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Text" Value="Закрепить"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding PlacementTarget.DataContext.IsPinned, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Value="True">
+                                                                                            <Setter Property="Text" Value="Открепить"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                    </MenuItem.Header>
+                                                                    <MenuItem.Icon>
+                                                                        <materialDesign:PackIcon Kind="Pin" Width="16" Height="16"/>
+                                                                    </MenuItem.Icon>
+                                                                </MenuItem>
+
+                                                                <!-- Rename (groups only) -->
+                                                                <MenuItem Command="{Binding DataContext.OpenRenameChatCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          Header="Переименовать"
+                                                                          Visibility="{Binding PlacementTarget.DataContext.IsGroupChat, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                    <MenuItem.Icon>
+                                                                        <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16"/>
+                                                                    </MenuItem.Icon>
+                                                                </MenuItem>
+
+                                                                <!-- Manage members (group owner only) -->
+                                                                <MenuItem Command="{Binding DataContext.OpenManageMembersCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          Header="Участники"
+                                                                          Visibility="{Binding PlacementTarget.DataContext.IsGroupOwner, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                    <MenuItem.Icon>
+                                                                        <materialDesign:PackIcon Kind="AccountGroup" Width="16" Height="16"/>
+                                                                    </MenuItem.Icon>
+                                                                </MenuItem>
+
+                                                                <Separator/>
+
+                                                                <!-- Delete -->
+                                                                <MenuItem Command="{Binding DataContext.DeleteChatCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          Header="Удалить"
+                                                                          Foreground="#EF5350">
+                                                                    <MenuItem.Icon>
+                                                                        <materialDesign:PackIcon Kind="Delete" Width="16" Height="16" Foreground="#EF5350"/>
+                                                                    </MenuItem.Icon>
+                                                                </MenuItem>
+                                                            </ContextMenu>
+                                                        </Button.ContextMenu>
+                                                    </Button>
+                                                </StackPanel>
                                             </Grid>
-                                        </StackPanel>
+                                        </Button>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </StackPanel>
                     </ScrollViewer>
+                </Grid>
 
-                    <!-- Input area -->
-                    <Border Grid.Row="2" Padding="12,8"
-                            Background="{DynamicResource SecondaryBackground}"
-                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
-                        <StackPanel>
-                            <TextBlock Text="{Binding StatusText}"
-                                       Visibility="{Binding StatusText, Converter={StaticResource NullToVisibilityConverter}}"
-                                       Foreground="{DynamicResource AccentBrush}"
-                                       FontSize="11" Margin="0,0,0,6"/>
+                <!-- Divider -->
+                <Border Grid.Column="1" Background="{DynamicResource BorderBrush}"/>
+
+                <!-- ── RIGHT: Active chat ───────────────────────────────── -->
+                <Grid Grid.Column="2">
+                    <!-- No chat selected -->
+                    <StackPanel Visibility="{Binding HasChatOpen, Converter={StaticResource InvertedBoolToVisibilityConverter}}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <materialDesign:PackIcon Kind="ChatOutline" Width="72" Height="72"
+                                                 Foreground="{DynamicResource SecondaryForeground}"
+                                                 HorizontalAlignment="Center" Opacity="0.35"/>
+                        <TextBlock Text="Выберите чат из списка слева"
+                                   Foreground="{DynamicResource SecondaryForeground}"
+                                   FontSize="14" HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                        <TextBlock Text="Или создайте новый групповой чат ↑"
+                                   Foreground="{DynamicResource SecondaryForeground}"
+                                   FontSize="12" HorizontalAlignment="Center" Margin="0,6,0,0" Opacity="0.6"/>
+                    </StackPanel>
+
+                    <!-- Active chat -->
+                    <Grid Visibility="{Binding HasChatOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Chat header -->
+                        <Border Grid.Row="0" Padding="16,10"
+                                Background="{DynamicResource SecondaryBackground}"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
                             <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <Button Grid.Column="0" Style="{StaticResource MaterialDesignIconButton}"
-                                        Command="{Binding AttachFileCommand}"
-                                        ToolTip="Прикрепить файл" Width="36" Height="36" Margin="0,0,4,0">
-                                    <materialDesign:PackIcon Kind="PaperclipPlus" Width="18" Height="18"/>
-                                </Button>
-
-                                <TextBox Grid.Column="1"
-                                         Text="{Binding NewMessage, UpdateSourceTrigger=PropertyChanged}"
-                                         materialDesign:HintAssist.Hint="Введите сообщение... (Enter — отправить)"
-                                         materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
-                                         Foreground="{DynamicResource PrimaryForeground}"
-                                         CaretBrush="{DynamicResource AccentBrush}"
-                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                         FontSize="13" VerticalContentAlignment="Center">
-                                    <TextBox.InputBindings>
-                                        <KeyBinding Key="Return" Command="{Binding SendMessageCommand}"/>
-                                    </TextBox.InputBindings>
-                                </TextBox>
-
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,0">
-                                    <Button Style="{StaticResource MaterialDesignIconButton}"
-                                            x:Name="EmojiButton"
-                                            Click="EmojiButton_Click"
-                                            Width="36" Height="36" ToolTip="Эмодзи">
-                                        <materialDesign:PackIcon Kind="EmoticonHappyOutline" Width="18" Height="18"/>
-                                        <Button.ContextMenu>
-                                            <ContextMenu MaxHeight="220" MaxWidth="380">
-                                                <MenuItem IsEnabled="False">
-                                                    <MenuItem.Header>
-                                                        <ItemsControl ItemsSource="{Binding DataContext.CommonEmojis, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
-                                                            <ItemsControl.ItemsPanel>
-                                                                <ItemsPanelTemplate><WrapPanel MaxWidth="360"/></ItemsPanelTemplate>
-                                                            </ItemsControl.ItemsPanel>
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate>
-                                                                    <Button Content="{Binding}" FontSize="18" Width="32" Height="32" Padding="0"
-                                                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                                                            Command="{Binding DataContext.InsertEmojiCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                                            CommandParameter="{Binding}"/>
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-                                                    </MenuItem.Header>
-                                                </MenuItem>
-                                            </ContextMenu>
-                                        </Button.ContextMenu>
-                                    </Button>
-                                    <Button Style="{StaticResource AppRaisedButton}"
-                                            Command="{Binding SendMessageCommand}"
-                                            Width="40" Height="36" Padding="0"
-                                            materialDesign:ButtonAssist.CornerRadius="8"
-                                            ToolTip="Отправить">
-                                        <materialDesign:PackIcon Kind="Send" Width="16" Height="16"/>
-                                    </Button>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <materialDesign:PackIcon Kind="ChatProcessingOutline" Width="20" Height="20"
+                                                             Foreground="{DynamicResource AccentBrush}"
+                                                             VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <TextBlock Text="{Binding ActiveChatTitle}" FontSize="15" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource PrimaryForeground}" VerticalAlignment="Center"/>
                                 </StackPanel>
+                                <Button HorizontalAlignment="Right"
+                                        Style="{StaticResource MaterialDesignIconButton}"
+                                        Command="{Binding CloseChatCommand}" ToolTip="Закрыть чат">
+                                    <materialDesign:PackIcon Kind="Close" Width="16" Height="16"/>
+                                </Button>
                             </Grid>
-                        </StackPanel>
-                    </Border>
+                        </Border>
+
+                        <!-- Messages -->
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                                      x:Name="MessagesScroll" Padding="16,8">
+                            <StackPanel>
+                                <ProgressBar IsIndeterminate="True" Height="2" Margin="0,0,0,8"
+                                             Visibility="{Binding IsLoadingMessages, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                <ItemsControl ItemsSource="{Binding ChatItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel>
+                                                <!-- Date separator -->
+                                                <Border HorizontalAlignment="Center"
+                                                        Margin="0,12,0,6" Padding="12,4" CornerRadius="10"
+                                                        Background="{DynamicResource SecondaryBackground}"
+                                                        Visibility="{Binding IsSeparator, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <TextBlock Text="{Binding DateLabel}"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource SecondaryForeground}"
+                                                               HorizontalAlignment="Center"/>
+                                                </Border>
+
+                                                <!-- Message -->
+                                                <Grid Margin="0,3"
+                                                      Visibility="{Binding IsMessage, Converter={StaticResource BoolToVisibilityConverter}}">
+
+                                                    <!-- Mine (right) -->
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                                                Visibility="{Binding Message.IsMine, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <!-- Delete button (shown on hover) -->
+                                                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                                                            Width="24" Height="24" Padding="0"
+                                                            VerticalAlignment="Center" Margin="0,0,4,0"
+                                                            Opacity="0.55" ToolTip="Удалить сообщение"
+                                                            Command="{Binding DataContext.DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding Message}">
+                                                        <materialDesign:PackIcon Kind="DeleteOutline" Width="14" Height="14"/>
+                                                    </Button>
+                                                    <Border MaxWidth="440"
+                                                            CornerRadius="12,2,12,12" Padding="12,8"
+                                                            Background="{DynamicResource AccentBrush}"
+                                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
+                                                        <Border.ContextMenu>
+                                                            <ContextMenu>
+                                                                <MenuItem Header="Копировать текст"
+                                                                          Command="{Binding PlacementTarget.Tag.CopyMessageTextCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="{Binding PlacementTarget.DataContext.Message, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                                    <MenuItem.Icon><materialDesign:PackIcon Kind="ContentCopy" Width="14" Height="14"/></MenuItem.Icon>
+                                                                </MenuItem>
+                                                                <Separator/>
+                                                                <MenuItem Header="Удалить" Foreground="#EF5350"
+                                                                          Command="{Binding PlacementTarget.Tag.DeleteMessageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="{Binding PlacementTarget.DataContext.Message, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                                    <MenuItem.Icon><materialDesign:PackIcon Kind="Delete" Width="14" Height="14" Foreground="#EF5350"/></MenuItem.Icon>
+                                                                </MenuItem>
+                                                            </ContextMenu>
+                                                        </Border.ContextMenu>
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding Message.Text}"
+                                                                       Foreground="White" FontSize="13"
+                                                                       TextWrapping="Wrap"
+                                                                       Visibility="{Binding Message.Text, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                                            <!-- Inline image preview -->
+                                                            <Border Visibility="{Binding Message.IsImageAttachment, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                    CornerRadius="6" Margin="0,4,0,0" ClipToBounds="True">
+                                                                <Image Source="{Binding Message.AttachmentUrl}"
+                                                                       MaxWidth="320" MaxHeight="240"
+                                                                       Stretch="Uniform" Cursor="Hand">
+                                                                    <Image.InputBindings>
+                                                                        <MouseBinding MouseAction="LeftClick"
+                                                                            Command="{Binding DataContext.DownloadFileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                            CommandParameter="{Binding Message}"/>
+                                                                    </Image.InputBindings>
+                                                                </Image>
+                                                            </Border>
+                                                            <!-- File attachment (non-image) -->
+                                                            <Border Visibility="{Binding Message.IsNonImageAttachment, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                    Background="#33000000" CornerRadius="6" Padding="10,7" Margin="0,4,0,0">
+                                                                <Button Style="{StaticResource FlatIconButton}" Padding="0"
+                                                                        Command="{Binding DataContext.DownloadFileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                        CommandParameter="{Binding Message}">
+                                                                    <StackPanel Orientation="Horizontal">
+                                                                        <materialDesign:PackIcon Kind="FileDownloadOutline" Width="20" Height="20"
+                                                                                                 Foreground="White" VerticalAlignment="Center"/>
+                                                                        <StackPanel Margin="8,0,0,0">
+                                                                            <TextBlock Text="{Binding Message.AttachmentFileName}"
+                                                                                       Foreground="White" FontSize="12" FontWeight="Medium"/>
+                                                                            <TextBlock Text="{Binding Message.FileSizeDisplay}"
+                                                                                       Foreground="#CCFFFFFF" FontSize="10"/>
+                                                                        </StackPanel>
+                                                                    </StackPanel>
+                                                                </Button>
+                                                            </Border>
+                                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+                                                                <TextBlock Text="{Binding Message.TimeDisplay}"
+                                                                           Foreground="#AAFFFFFF" FontSize="10"
+                                                                           VerticalAlignment="Center"/>
+                                                                <materialDesign:PackIcon Kind="ClockOutline"
+                                                                    Width="12" Height="12" Margin="4,0,0,0"
+                                                                    Foreground="#AAFFFFFF" VerticalAlignment="Center"
+                                                                    Visibility="{Binding Message.IsSending, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                                <materialDesign:PackIcon Kind="Check"
+                                                                    Width="12" Height="12" Margin="4,0,0,0"
+                                                                    Foreground="#AAFFFFFF" VerticalAlignment="Center"
+                                                                    Visibility="{Binding Message.IsSent, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                                <materialDesign:PackIcon Kind="CheckAll"
+                                                                    Width="14" Height="14" Margin="4,0,0,0"
+                                                                    Foreground="#4CAF50" VerticalAlignment="Center"
+                                                                    Visibility="{Binding Message.IsRead, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                                <materialDesign:PackIcon Kind="AlertCircleOutline"
+                                                                    Width="13" Height="13" Margin="4,0,0,0"
+                                                                    Foreground="#EF5350" VerticalAlignment="Center"
+                                                                    Visibility="{Binding Message.IsFailed, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    </StackPanel>
+
+                                                    <!-- Other (left) -->
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                                                                Visibility="{Binding Message.IsMine, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                                                        <Border Width="32" Height="32" CornerRadius="16"
+                                                                Background="{DynamicResource AccentAlpha2Brush}"
+                                                                VerticalAlignment="Bottom" Margin="0,0,8,0">
+                                                            <TextBlock Text="{Binding Message.SenderLetter}"
+                                                                       FontSize="12" FontWeight="Bold"
+                                                                       Foreground="{DynamicResource AccentBrush}"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <Border MaxWidth="440" CornerRadius="2,12,12,12"
+                                                                Padding="12,8" Background="{DynamicResource CardBackground}"
+                                                                Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
+                                                            <Border.ContextMenu>
+                                                                <ContextMenu>
+                                                                    <MenuItem Header="Копировать текст"
+                                                                              Command="{Binding PlacementTarget.Tag.CopyMessageTextCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                              CommandParameter="{Binding PlacementTarget.DataContext.Message, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                                        <MenuItem.Icon><materialDesign:PackIcon Kind="ContentCopy" Width="14" Height="14"/></MenuItem.Icon>
+                                                                    </MenuItem>
+                                                                </ContextMenu>
+                                                            </Border.ContextMenu>
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Message.SenderUsername}"
+                                                                           Foreground="{DynamicResource AccentBrush}"
+                                                                           FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                                                <TextBlock Text="{Binding Message.Text}"
+                                                                           Foreground="{DynamicResource PrimaryForeground}"
+                                                                           FontSize="13" TextWrapping="Wrap"
+                                                                           Visibility="{Binding Message.Text, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                                                <!-- Inline image preview -->
+                                                                <Border Visibility="{Binding Message.IsImageAttachment, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                        CornerRadius="6" Margin="0,4,0,0" ClipToBounds="True">
+                                                                    <Image Source="{Binding Message.AttachmentUrl}"
+                                                                           MaxWidth="320" MaxHeight="240"
+                                                                           Stretch="Uniform" Cursor="Hand">
+                                                                        <Image.InputBindings>
+                                                                            <MouseBinding MouseAction="LeftClick"
+                                                                                Command="{Binding DataContext.DownloadFileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                                CommandParameter="{Binding Message}"/>
+                                                                        </Image.InputBindings>
+                                                                    </Image>
+                                                                </Border>
+                                                                <!-- File attachment (non-image) -->
+                                                                <Border Visibility="{Binding Message.IsNonImageAttachment, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                        Background="{DynamicResource AccentAlpha2Brush}"
+                                                                        CornerRadius="6" Padding="10,7" Margin="0,4,0,0">
+                                                                    <Button Style="{StaticResource FlatIconButton}" Padding="0"
+                                                                            Command="{Binding DataContext.DownloadFileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                            CommandParameter="{Binding Message}">
+                                                                        <StackPanel Orientation="Horizontal">
+                                                                            <materialDesign:PackIcon Kind="FileDownloadOutline" Width="20" Height="20"
+                                                                                                     Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                                                            <StackPanel Margin="8,0,0,0">
+                                                                                <TextBlock Text="{Binding Message.AttachmentFileName}"
+                                                                                           Foreground="{DynamicResource PrimaryForeground}"
+                                                                                           FontSize="12" FontWeight="Medium"/>
+                                                                                <TextBlock Text="{Binding Message.FileSizeDisplay}"
+                                                                                           Foreground="{DynamicResource SecondaryForeground}" FontSize="10"/>
+                                                                            </StackPanel>
+                                                                        </StackPanel>
+                                                                    </Button>
+                                                                </Border>
+                                                                <TextBlock Text="{Binding Message.TimeDisplay}"
+                                                                           Foreground="{DynamicResource SecondaryForeground}"
+                                                                           FontSize="10" HorizontalAlignment="Right" Margin="0,4,0,0"/>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </StackPanel>
+
+                                                </Grid>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Input area -->
+                        <Border Grid.Row="2" Padding="12,8"
+                                Background="{DynamicResource SecondaryBackground}"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{Binding StatusText}"
+                                           Visibility="{Binding StatusText, Converter={StaticResource NullToVisibilityConverter}}"
+                                           Foreground="{DynamicResource AccentBrush}"
+                                           FontSize="11" Margin="0,0,0,6"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Button Grid.Column="0" Style="{StaticResource MaterialDesignIconButton}"
+                                            Command="{Binding AttachFileCommand}"
+                                            ToolTip="Прикрепить файл" Width="36" Height="36" Margin="0,0,4,0">
+                                        <materialDesign:PackIcon Kind="PaperclipPlus" Width="18" Height="18"/>
+                                    </Button>
+
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding NewMessage, UpdateSourceTrigger=PropertyChanged}"
+                                             materialDesign:HintAssist.Hint="Введите сообщение... (Enter — отправить)"
+                                             materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                             Foreground="{DynamicResource PrimaryForeground}"
+                                             CaretBrush="{DynamicResource AccentBrush}"
+                                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             FontSize="13" VerticalContentAlignment="Center">
+                                        <TextBox.InputBindings>
+                                            <KeyBinding Key="Return" Command="{Binding SendMessageCommand}"/>
+                                        </TextBox.InputBindings>
+                                    </TextBox>
+
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,0">
+                                        <Button Style="{StaticResource MaterialDesignIconButton}"
+                                                x:Name="EmojiButton"
+                                                Click="EmojiButton_Click"
+                                                Width="36" Height="36" ToolTip="Эмодзи">
+                                            <materialDesign:PackIcon Kind="EmoticonHappyOutline" Width="18" Height="18"/>
+                                            <Button.ContextMenu>
+                                                <ContextMenu MaxHeight="220" MaxWidth="388" Padding="4">
+                                                    <MenuItem Focusable="False">
+                                                        <MenuItem.Template>
+                                                            <ControlTemplate TargetType="MenuItem">
+                                                                <ContentPresenter ContentSource="Header"/>
+                                                            </ControlTemplate>
+                                                        </MenuItem.Template>
+                                                        <MenuItem.Header>
+                                                            <ItemsControl ItemsSource="{Binding CommonEmojis}"
+                                                                          Tag="{Binding InsertEmojiCommand}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate><WrapPanel Width="360"/></ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <Button Content="{Binding}" FontSize="18" Width="32" Height="32" Padding="0"
+                                                                                Style="{StaticResource MaterialDesignFlatButton}"
+                                                                                Command="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                                CommandParameter="{Binding}"/>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </MenuItem.Header>
+                                                    </MenuItem>
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                        </Button>
+                                        <Button Style="{StaticResource AppRaisedButton}"
+                                                Command="{Binding SendMessageCommand}"
+                                                Width="40" Height="36" Padding="0"
+                                                materialDesign:ButtonAssist.CornerRadius="8"
+                                                ToolTip="Отправить">
+                                            <materialDesign:PackIcon Kind="Send" Width="16" Height="16"/>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
                 </Grid>
             </Grid>
+
+            <!-- ═══ Rename overlay ═══════════════════════════════════════════════ -->
+            <Grid Panel.ZIndex="100"
+                  Visibility="{Binding IsRenameDialogOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Border Background="#AA000000"/>
+                <Border Width="360" Padding="24" CornerRadius="12"
+                        Background="{DynamicResource CardBackground}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        materialDesign:ElevationAssist.Elevation="Dp8">
+                    <StackPanel>
+                        <TextBlock Text="Переименовать чат" FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource PrimaryForeground}" Margin="0,0,0,16"/>
+                        <TextBox Text="{Binding RenameValue, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="Новое название"
+                                 materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                 Foreground="{DynamicResource PrimaryForeground}"
+                                 CaretBrush="{DynamicResource AccentBrush}"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 Margin="0,0,0,8">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Return" Command="{Binding ConfirmRenameChatCommand}"/>
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <TextBlock Text="{Binding RenameError}"
+                                   Visibility="{Binding RenameError, Converter={StaticResource NullToVisibilityConverter}}"
+                                   Foreground="#EF5350" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Command="{Binding CancelRenameChatCommand}"
+                                    Content="Отмена" Margin="0,0,8,0"
+                                    materialDesign:ButtonAssist.CornerRadius="6"/>
+                            <Button Style="{StaticResource AppRaisedButton}"
+                                    Command="{Binding ConfirmRenameChatCommand}"
+                                    Content="Сохранить"
+                                    materialDesign:ButtonAssist.CornerRadius="6"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- ═══ Members management overlay ══════════════════════════════════ -->
+            <Grid Panel.ZIndex="100"
+                  Visibility="{Binding IsMembersDialogOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Border Background="#AA000000"/>
+                <Border Width="460" MaxHeight="580" Padding="24" CornerRadius="12"
+                        Background="{DynamicResource CardBackground}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        materialDesign:ElevationAssist.Elevation="Dp8">
+                    <StackPanel>
+                        <!-- Header -->
+                        <Grid Margin="0,0,0,16">
+                            <TextBlock Text="Участники чата" FontSize="16" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource PrimaryForeground}" VerticalAlignment="Center"/>
+                            <Button HorizontalAlignment="Right"
+                                    Style="{StaticResource MaterialDesignIconButton}"
+                                    Command="{Binding CloseMembersDialogCommand}"
+                                    Width="28" Height="28">
+                                <materialDesign:PackIcon Kind="Close" Width="16" Height="16"/>
+                            </Button>
+                        </Grid>
+
+                        <!-- Members list -->
+                        <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto" Margin="0,0,0,16">
+                            <ItemsControl ItemsSource="{Binding MemberItems}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="0,8"
+                                                BorderBrush="{DynamicResource BorderBrush}"
+                                                BorderThickness="0,0,0,1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Avatar + username + owner badge -->
+                                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Border Width="32" Height="32" CornerRadius="16"
+                                                            Background="{DynamicResource AccentAlpha2Brush}"
+                                                            Margin="0,0,10,0">
+                                                        <TextBlock Text="{Binding Username, Converter={StaticResource FirstLetterConverter}}"
+                                                                   FontSize="12" FontWeight="Bold"
+                                                                   Foreground="{DynamicResource AccentBrush}"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <StackPanel VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Username}"
+                                                                   FontWeight="Medium" FontSize="13"
+                                                                   Foreground="{DynamicResource PrimaryForeground}"/>
+                                                        <TextBlock Text="Владелец"
+                                                                   Visibility="{Binding ShowOwnerBadge, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                   Foreground="{DynamicResource AccentBrush}"
+                                                                   FontSize="10" FontWeight="SemiBold"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+
+                                                <!-- Transfer ownership button -->
+                                                <Button Grid.Column="1"
+                                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                        FontSize="11" Height="28" Padding="8,0" Margin="6,0,4,0"
+                                                        Command="{Binding DataContext.TransferOwnershipCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                        Content="Передать права"
+                                                        ToolTip="Сделать владельцем чата"
+                                                        materialDesign:ButtonAssist.CornerRadius="4"/>
+
+                                                <!-- Remove member button -->
+                                                <Button Grid.Column="2"
+                                                        Style="{StaticResource MaterialDesignIconButton}"
+                                                        Width="30" Height="30"
+                                                        Command="{Binding DataContext.RemoveMemberCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                        ToolTip="Исключить из чата">
+                                                    <materialDesign:PackIcon Kind="AccountRemove" Width="16" Height="16" Foreground="#EF5350"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <!-- Add member section -->
+                        <TextBlock Text="Добавить участника по имени пользователя:"
+                                   FontSize="12" Foreground="{DynamicResource SecondaryForeground}"
+                                   Margin="0,0,0,6"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding AddMemberUsername, UpdateSourceTrigger=PropertyChanged}"
+                                     materialDesign:HintAssist.Hint="Имя пользователя"
+                                     materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                     Foreground="{DynamicResource PrimaryForeground}"
+                                     CaretBrush="{DynamicResource AccentBrush}"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     FontSize="13" Margin="0,0,8,0">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Return" Command="{Binding AddMemberCommand}"/>
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <Button Grid.Column="1"
+                                    Style="{StaticResource AppRaisedButton}"
+                                    Command="{Binding AddMemberCommand}"
+                                    Content="Добавить" Height="40"
+                                    materialDesign:ButtonAssist.CornerRadius="6"/>
+                        </Grid>
+
+                        <!-- Error message -->
+                        <TextBlock Text="{Binding MembersError}"
+                                   Visibility="{Binding MembersError, Converter={StaticResource NullToVisibilityConverter}}"
+                                   Foreground="#EF5350" FontSize="12" TextWrapping="Wrap"
+                                   Margin="0,0,0,10"/>
+
+                        <!-- Close -->
+                        <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Command="{Binding CloseMembersDialogCommand}"
+                                Content="Закрыть" HorizontalAlignment="Right"
+                                materialDesign:ButtonAssist.CornerRadius="6"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
         </Grid>
     </materialDesign:DialogHost>
 </UserControl>

@@ -451,6 +451,14 @@ public sealed class ApiClient :
         await GetClient().ExecuteAsync(req);
     }
 
+    public async Task DeleteChatMessageAsync(Guid messageId)
+    {
+        var resp = await GetClient().ExecuteAsync(
+            Req($"api/v1/chats/messages/{messageId}", Method.Delete));
+        if (!resp.IsSuccessful && resp.StatusCode != System.Net.HttpStatusCode.NotFound)
+            throw new HttpRequestException(BuildRussianError(resp));
+    }
+
     public async Task<ChatMessageDto> SendMessageAsync(SendChatMessageDto request)
     {
         var req = Req("api/v1/chats", Method.Post);
@@ -481,11 +489,22 @@ public sealed class ApiClient :
     public Task<List<GroupChatDto>> GetGroupChatsAsync() =>
         SendAsync<List<GroupChatDto>>(Req("api/v1/groupchats"));
 
+    public Task<GroupChatDto> GetGroupChatAsync(Guid id) =>
+        SendAsync<GroupChatDto>(Req($"api/v1/groupchats/{id}"));
+
     public async Task<GroupChatDto> CreateGroupChatAsync(CreateGroupChatDto dto)
     {
         var req = Req("api/v1/groupchats", Method.Post);
         req.AddJsonBody(dto);
         return await SendAsync<GroupChatDto>(req);
+    }
+
+    public async Task RenameGroupChatAsync(Guid id, string newName)
+    {
+        var req = Req($"api/v1/groupchats/{id}/name", Method.Patch);
+        req.AddJsonBody(new { name = newName });
+        var resp = await GetClient().ExecuteAsync(req);
+        if (!resp.IsSuccessful) throw new HttpRequestException(BuildRussianError(resp));
     }
 
     public async Task AddGroupChatMemberAsync(Guid groupChatId, Guid userId)
@@ -503,6 +522,14 @@ public sealed class ApiClient :
             Req($"api/v1/groupchats/{groupChatId}/members/{userId}", Method.Delete));
         if (!resp.IsSuccessful)
             throw new HttpRequestException(BuildRussianError(resp));
+    }
+
+    public async Task TransferGroupOwnershipAsync(Guid groupChatId, Guid newOwnerId)
+    {
+        var req = Req($"api/v1/groupchats/{groupChatId}/transfer-owner", Method.Post);
+        req.AddJsonBody(new { newOwnerUserId = newOwnerId });
+        var resp = await GetClient().ExecuteAsync(req);
+        if (!resp.IsSuccessful) throw new HttpRequestException(BuildRussianError(resp));
     }
 
     public async Task DeleteGroupChatAsync(Guid groupChatId)

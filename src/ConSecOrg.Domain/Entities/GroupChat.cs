@@ -21,4 +21,6 @@ public class GroupChat : BaseEntity<Guid>
     }
 
     public void Rename(string name) => Name = name;
+    public void SetName(string name) => Name = name;
+    public void TransferOwnership(Guid newOwnerId) => CreatedByUserId = newOwnerId;
 }

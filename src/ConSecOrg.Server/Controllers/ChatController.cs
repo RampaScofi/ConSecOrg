@@ -44,7 +44,7 @@ public class ChatController(AppDbContext db, IHubContext<BoardHub> hub, ChatEncr
                 LastMsg = db.ChatMessages
                     .Where(m => m.ProjectId == p.Id)
                     .OrderByDescending(m => m.SentAt)
-                    .Select(m => new { m.Text, m.SentAt, SenderName = m.Sender!.Username })
+                    .Select(m => new { m.Text, m.TextCipher, m.TextNonce, m.TextHmac, m.SentAt, SenderName = m.Sender!.Username })
                     .FirstOrDefault()
             })
             .ToListAsync(ct);
@@ -64,7 +64,10 @@ public class ChatController(AppDbContext db, IHubContext<BoardHub> hub, ChatEncr
                 ChatType = "project",
                 ProjectId = p.Id,
                 Title = p.Name,
-                LastMessageText = p.LastMsg?.Text ?? string.Empty,
+                LastMessageText = p.LastMsg == null ? string.Empty
+                    : p.LastMsg.TextCipher != null
+                        ? chatCrypto.Decrypt(p.LastMsg.TextCipher, p.LastMsg.TextNonce!, p.LastMsg.TextHmac!)
+                        : p.LastMsg.Text,
                 LastMessageAt = p.LastMsg?.SentAt,
                 LastSenderUsername = p.LastMsg?.SenderName ?? string.Empty,
                 UnreadCount = unread
@@ -103,7 +106,7 @@ public class ChatController(AppDbContext db, IHubContext<BoardHub> hub, ChatEncr
                     ((m.SenderUserId == myId && m.ToUserId == partnerId) ||
                      (m.SenderUserId == partnerId && m.ToUserId == myId)))
                 .OrderByDescending(m => m.SentAt)
-                .Select(m => new { m.Text, m.SentAt, SenderName = m.Sender!.Username })
+                .Select(m => new { m.Text, m.TextCipher, m.TextNonce, m.TextHmac, m.SentAt, SenderName = m.Sender!.Username })
                 .FirstOrDefaultAsync(ct);
 
             result.Add(new ChatSummaryDto
@@ -112,7 +115,10 @@ public class ChatController(AppDbContext db, IHubContext<BoardHub> hub, ChatEncr
                 ChatType = "direct",
                 OtherUserId = partnerId,
                 Title = partner.Username,
-                LastMessageText = lastMsg?.Text ?? string.Empty,
+                LastMessageText = lastMsg == null ? string.Empty
+                    : lastMsg.TextCipher != null
+                        ? chatCrypto.Decrypt(lastMsg.TextCipher, lastMsg.TextNonce!, lastMsg.TextHmac!)
+                        : lastMsg.Text,
                 LastMessageAt = lastMsg?.SentAt,
                 LastSenderUsername = lastMsg?.SenderName ?? string.Empty,
                 UnreadCount = unread
@@ -127,10 +133,11 @@ public class ChatController(AppDbContext db, IHubContext<BoardHub> hub, ChatEncr
             {
                 g.Id,
                 g.Name,
+                g.CreatedByUserId,
                 LastMsg = db.ChatMessages
                     .Where(m => m.GroupChatId == g.Id)
                     .OrderByDescending(m => m.SentAt)
-                    .Select(m => new { m.Text, m.SentAt, SenderName = m.Sender!.Username })
+                    .Select(m => new { m.Text, m.TextCipher, m.TextNonce, m.TextHmac, m.SentAt, SenderName = m.Sender!.Username })
                     .FirstOrDefault()
             })
             .ToListAsync(ct);
@@ -150,7 +157,11 @@ public class ChatController(AppDbContext db, IHubContext<BoardHub> hub, ChatEncr
                 ChatType = "group",
                 GroupChatId = g.Id,
                 Title = g.Name,
-                LastMessageText = g.LastMsg?.Text ?? string.Empty,
+                OwnerUserId = g.CreatedByUserId,
+                LastMessageText = g.LastMsg == null ? string.Empty
+                    : g.LastMsg.TextCipher != null
+                        ? chatCrypto.Decrypt(g.LastMsg.TextCipher, g.LastMsg.TextNonce!, g.LastMsg.TextHmac!)
+                        : g.LastMsg.Text,
                 LastMessageAt = g.LastMsg?.SentAt,
                 LastSenderUsername = g.LastMsg?.SenderName ?? string.Empty,
                 UnreadCount = unread
@@ -175,7 +186,21 @@ public class ChatController(AppDbContext db, IHubContext<BoardHub> hub, ChatEncr
             .OrderBy(m => m.SentAt)
             .ToListAsync(ct);
 
-        return Ok(messages.Select(MapDto).ToList());
+        // Latest read timestamp from any OTHER project member (for my own messages' read status)
+        var chatKey = $"project:{projectId:N}";
+        var latestOtherRead = await db.ChatLastReads.AsNoTracking()
+            .Where(r => r.ChatKey == chatKey && r.UserId != myId)
+            .MaxAsync(r => (DateTime?)r.LastReadAt, ct);
+
+        var dtos = messages.Select(m =>
+        {
+            var dto = MapDto(m);
+            if (m.SenderUserId == myId && latestOtherRead.HasValue)
+                dto.IsReadByRecipient = m.SentAt <= latestOtherRead.Value;
+            return dto;
+        }).ToList();
+
+        return Ok(dtos);
     }
 
     [HttpGet("direct/{otherUserId:guid}")]
@@ -235,6 +260,35 @@ public class ChatController(AppDbContext db, IHubContext<BoardHub> hub, ChatEncr
         }
 
         return Ok();
+    }
+
+    [HttpDelete("messages/{id:guid}")]
+    public async Task<IActionResult> DeleteMessage(Guid id, CancellationToken ct)
+    {
+        var myId = CurrentUserId;
+        var msg = await db.ChatMessages.FirstOrDefaultAsync(m => m.Id == id, ct);
+        if (msg is null) return NotFound();
+        if (msg.SenderUserId != myId) return Forbid();
+
+        db.ChatMessages.Remove(msg);
+        await db.SaveChangesAsync(ct);
+
+        // Broadcast deletion via SignalR
+        if (msg.ProjectId.HasValue)
+            await hub.Clients.Group(BoardHub.ProjectGroup(msg.ProjectId.Value))
+                .SendAsync("MessageDeleted", id, ct);
+        else if (msg.GroupChatId.HasValue)
+            await hub.Clients.Group(BoardHub.GroupChatGroup(msg.GroupChatId.Value))
+                .SendAsync("MessageDeleted", id, ct);
+        else if (msg.ToUserId.HasValue)
+        {
+            await hub.Clients.Group(BoardHub.UserGroup(msg.ToUserId.Value))
+                .SendAsync("MessageDeleted", id, ct);
+            await hub.Clients.Group(BoardHub.UserGroup(myId))
+                .SendAsync("MessageDeleted", id, ct);
+        }
+
+        return NoContent();
     }
 
     [HttpPost]

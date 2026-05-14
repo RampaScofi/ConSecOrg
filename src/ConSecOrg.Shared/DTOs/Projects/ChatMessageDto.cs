@@ -45,4 +45,6 @@ public class ChatSummaryDto
     public DateTime? LastMessageAt { get; set; }
     public string LastSenderUsername { get; set; } = string.Empty;
     public int UnreadCount { get; set; }
+    // For group chats: the user ID of the owner/creator
+    public Guid? OwnerUserId { get; set; }
 }
