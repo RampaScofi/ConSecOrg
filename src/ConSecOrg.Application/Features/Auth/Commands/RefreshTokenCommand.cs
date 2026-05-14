@@ -45,15 +45,15 @@ public class RefreshTokenCommandHandler(
             cmd.IpAddress ?? "unknown",
             DateTime.UtcNow.AddDays(7),
             cmd.UserAgent,
-            session.DeviceId);
+            session.DeviceId,
+            session.KeyMaterial);  // carry key forward from DB — works even after server restart
 
         await uow.Users.AddSessionAsync(newSession, ct);
         await uow.SaveChangesAsync(ct);
 
-        // Перенести ключ шифрования
-        var oldKey = keyStore.Get(session.Id);
-        if (oldKey is not null)
-            keyStore.Store(newSessionId, oldKey);
+        // Refresh in-memory cache too
+        if (session.KeyMaterial is not null)
+            keyStore.Store(newSessionId, session.KeyMaterial);
 
         var accessToken = jwtService.GenerateAccessToken(user, newSessionId);
 

@@ -5,6 +5,7 @@ using ConSecOrg.Client.Services;
 using ConSecOrg.Client.ViewModels.Base;
 using ConSecOrg.Client.ViewModels.Company;
 using ConSecOrg.Shared.DTOs.Contacts;
+using ConSecOrg.Shared.DTOs.Projects;
 using ConSecOrg.Shared.DTOs.Users;
 using System.Collections.ObjectModel;
 
@@ -14,15 +15,22 @@ public partial class ContactsViewModel : BasePageViewModel
 {
     private readonly IContactsApiService _contactsService;
     private readonly IUserSearchApiService _userSearchService;
+    private readonly ISharedProjectsApiService _sharedProjectsService;
+    private readonly NavigationService _navigation;
     private readonly ModeService _modeService;
     private readonly SharedChatPanelViewModel _chatPanel;
 
     public ContactsViewModel(IContactsApiService contactsService,
-        IUserSearchApiService userSearchService, ModeService modeService,
+        IUserSearchApiService userSearchService,
+        ISharedProjectsApiService sharedProjectsService,
+        NavigationService navigation,
+        ModeService modeService,
         SharedChatPanelViewModel chatPanel)
     {
         _contactsService = contactsService;
         _userSearchService = userSearchService;
+        _sharedProjectsService = sharedProjectsService;
+        _navigation = navigation;
         _modeService = modeService;
         _chatPanel = chatPanel;
     }
@@ -58,6 +66,24 @@ public partial class ContactsViewModel : BasePageViewModel
     [ObservableProperty] private string? _editPhone;
     [ObservableProperty] private string? _editNotes;
 
+    public bool IsCreatingNew => IsEditing && SelectedContact is null;
+    public bool ShowEmptyState => SelectedContact is null && !IsCreatingNew;
+
+    partial void OnIsEditingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsCreatingNew));
+        OnPropertyChanged(nameof(ShowEmptyState));
+    }
+
+    partial void OnSelectedContactChanged(ContactDto? value)
+    {
+        OnPropertyChanged(nameof(IsCreatingNew));
+        OnPropertyChanged(nameof(ShowEmptyState));
+        // Hide shared projects panel when switching contacts
+        ShowContactSharedProjects = false;
+        ContactSharedProjects.Clear();
+    }
+
     // ── User search ────────────────────────────────────────────────────────────
     [ObservableProperty] private bool _showUserSearch;
     [ObservableProperty] private string _userSearchQuery = string.Empty;
@@ -73,8 +99,15 @@ public partial class ContactsViewModel : BasePageViewModel
     partial void OnPendingRequestsChanged(ObservableCollection<ContactRequestDto> value)
         => OnPropertyChanged(nameof(HasNoPendingRequests));
 
+    // ── Shared projects panel ──────────────────────────────────────────────────
+    [ObservableProperty] private bool _showContactSharedProjects;
+    [ObservableProperty] private bool _isLoadingSharedProjects;
+    [ObservableProperty] private ObservableCollection<SharedProjectDto> _contactSharedProjects = [];
+    [ObservableProperty] private string? _sharedProjectsStatusText;
+
     public override async Task OnNavigatedToAsync()
     {
+        NotificationMessage = string.Empty;
         await LoadAsync();
         if (IsCorporate)
         {
@@ -92,20 +125,16 @@ public partial class ContactsViewModel : BasePageViewModel
             var accepted = sent.Where(r => r.Status == "Accepted").ToList();
             if (accepted.Count == 0) return;
 
-            var existingEmails = _allContacts
-                .Where(c => c.Email != null)
-                .Select(c => c.Email!.ToLowerInvariant())
+            var existingLinkedIds = _allContacts
+                .Where(c => c.LinkedUserId.HasValue)
+                .Select(c => c.LinkedUserId!.Value)
                 .ToHashSet();
 
             bool anyAdded = false;
             foreach (var req in accepted)
             {
-                if (!string.IsNullOrEmpty(req.ReceiverEmail) &&
-                    existingEmails.Contains(req.ReceiverEmail.ToLowerInvariant()))
-                    continue;
-                if (!string.IsNullOrEmpty(req.ReceiverUsername) &&
-                    _allContacts.Any(c => c.Name.Equals(req.ReceiverUsername, StringComparison.OrdinalIgnoreCase)))
-                    continue;
+                if (req.ReceiverId == Guid.Empty) continue;
+                if (existingLinkedIds.Contains(req.ReceiverId)) continue;
 
                 await _contactsService.CreateContactAsync(new CreateContactRequestDto
                 {
@@ -157,7 +186,18 @@ public partial class ContactsViewModel : BasePageViewModel
     }
 
     [RelayCommand] private void StartEdit() => IsEditing = true;
-    [RelayCommand] private void CancelEdit() { IsEditing = false; if (SelectedContact is not null) SelectContact(SelectedContact); }
+    [RelayCommand]
+    private void CancelEdit()
+    {
+        IsEditing = false;
+        if (SelectedContact is not null)
+            SelectContact(SelectedContact);
+        else
+        {
+            EditName = string.Empty;
+            EditEmail = EditPhone = EditNotes = null;
+        }
+    }
 
     [RelayCommand]
     private void NewContact()
@@ -215,14 +255,19 @@ public partial class ContactsViewModel : BasePageViewModel
     {
         try
         {
+            // Only send a friend request — contact appears for both after acceptance
             await _userSearchService.SendContactRequestAsync(new SendContactRequestDto { ReceiverId = user.Id });
-            SearchStatusText = $"Запрос отправлен пользователю {user.Username}";
+            SearchStatusText = $"Запрос отправлен {user.Username}. Ожидайте подтверждения.";
         }
         catch (Exception ex)
         {
-            SearchStatusText = ex.Message.Contains("409") || ex.Message.Contains("Conflict")
-                ? "Запрос уже отправлен"
-                : "Ошибка при отправке запроса";
+            var msg = ex.Message;
+            if (msg.Contains("409") || msg.Contains("Conflict"))
+                SearchStatusText = "Запрос уже отправлен";
+            else if (msg.Contains("403") || msg.Contains("Forbidden") || msg.Contains("encryption key") || msg.Contains("log in"))
+                SearchStatusText = "Ошибка сессии: войдите в систему заново.";
+            else
+                SearchStatusText = $"Ошибка: {msg}";
         }
     }
 
@@ -234,7 +279,7 @@ public partial class ContactsViewModel : BasePageViewModel
             await _userSearchService.AcceptContactRequestAsync(request.Id);
             PendingRequests.Remove(request);
             PendingCount = PendingRequests.Count;
-            // Add accepted user as a contact (with LinkedUserId so chat works)
+            // Add accepted user as a contact with LinkedUserId so chat works
             if (!_allContacts.Any(c => c.LinkedUserId == request.SenderId))
                 await _contactsService.CreateContactAsync(new CreateContactRequestDto
                 {
@@ -263,7 +308,7 @@ public partial class ContactsViewModel : BasePageViewModel
     private async Task SaveAsync()
     {
         if (string.IsNullOrWhiteSpace(EditName)) return;
-        await ExecuteAsync(async () =>
+        try
         {
             if (SelectedContact is null)
                 await _contactsService.CreateContactAsync(new CreateContactRequestDto { Name = EditName, Email = EditEmail, Phone = EditPhone, Notes = EditNotes });
@@ -271,7 +316,15 @@ public partial class ContactsViewModel : BasePageViewModel
                 await _contactsService.UpdateContactAsync(SelectedContact.Id, new UpdateContactRequestDto { Name = EditName, Email = EditEmail, Phone = EditPhone, Notes = EditNotes });
             IsEditing = false;
             await LoadAsync();
-        });
+        }
+        catch (Exception ex)
+        {
+            var msg = ex.Message;
+            if (msg.Contains("403") || msg.Contains("Forbidden") || msg.Contains("encryption key") || msg.Contains("log in"))
+                NotificationMessage = "Ошибка сессии: войдите в систему заново (сессия устарела).";
+            else
+                NotificationMessage = $"Ошибка сохранения: {msg}";
+        }
     }
 
     [RelayCommand]
@@ -285,15 +338,35 @@ public partial class ContactsViewModel : BasePageViewModel
 
     // ── Три точки меню ────────────────────────────────────────────────────────
     [RelayCommand]
-    private void OpenChat(ContactDto? contact)
+    private async Task OpenChatAsync(ContactDto? contact)
     {
         if (contact is null) return;
-        // Try to find the server UserId via email match (corporate only)
-        // For now, use the contact's linked user if available
+
         if (contact.LinkedUserId.HasValue)
+        {
             _chatPanel.OpenDirect(contact.LinkedUserId.Value, contact.Name);
-        else
-            NotificationMessage = $"Пользователь {contact.Name} не связан с аккаунтом в системе.";
+            return;
+        }
+
+        // Fallback: search by email to find the linked user
+        if (!string.IsNullOrWhiteSpace(contact.Email))
+        {
+            try
+            {
+                var results = await _userSearchService.SearchUsersAsync(contact.Email);
+                var match = results.FirstOrDefault(u =>
+                    u.Email.Equals(contact.Email, StringComparison.OrdinalIgnoreCase));
+                if (match is not null)
+                {
+                    contact.LinkedUserId = match.Id;
+                    _chatPanel.OpenDirect(match.Id, contact.Name);
+                    return;
+                }
+            }
+            catch { /* search failed */ }
+        }
+
+        NotificationMessage = $"Пользователь {contact.Name} не найден в системе.";
     }
 
     [ObservableProperty] private string _notificationMessage = string.Empty;
@@ -302,9 +375,7 @@ public partial class ContactsViewModel : BasePageViewModel
     private void PinContact(ContactDto? contact)
     {
         if (contact is null) return;
-        // Toggle pinned state locally (visual only — server doesn't have isPinned for contacts)
         contact.IsPinned = !contact.IsPinned;
-        // Re-sort: pinned contacts first
         var sorted = _allContacts
             .OrderByDescending(c => c.IsPinned)
             .ThenBy(c => c.Name)
@@ -314,12 +385,67 @@ public partial class ContactsViewModel : BasePageViewModel
     }
 
     [RelayCommand]
-    private void ShowSharedProjects(ContactDto? contact)
+    private async Task ShowSharedProjectsAsync(ContactDto? contact)
     {
         if (contact is null) return;
-        // Navigate to "Моя компания" page - user will see shared projects there
-        // For now show a message
-        NotificationMessage = $"Совместные проекты с {contact.Name} — откройте вкладку «Моя компания»";
+
+        if (!contact.LinkedUserId.HasValue)
+        {
+            NotificationMessage = $"Пользователь {contact.Name} не связан с аккаунтом в системе.";
+            return;
+        }
+
+        // Toggle off if already showing for this contact
+        if (ShowContactSharedProjects)
+        {
+            ShowContactSharedProjects = false;
+            ContactSharedProjects.Clear();
+            SharedProjectsStatusText = null;
+            return;
+        }
+
+        IsLoadingSharedProjects = true;
+        ShowContactSharedProjects = true;
+        ContactSharedProjects.Clear();
+        SharedProjectsStatusText = null;
+
+        try
+        {
+            var allProjects = await _sharedProjectsService.GetMyProjectsAsync();
+            var mutual = allProjects
+                .Where(p => p.OwnerUserId == contact.LinkedUserId.Value
+                         || p.Members.Any(m => m.UserId == contact.LinkedUserId.Value))
+                .ToList();
+
+            ContactSharedProjects = new ObservableCollection<SharedProjectDto>(mutual);
+            SharedProjectsStatusText = mutual.Count == 0 ? "Нет совместных проектов" : null;
+        }
+        catch
+        {
+            SharedProjectsStatusText = "Не удалось загрузить проекты";
+        }
+        finally
+        {
+            IsLoadingSharedProjects = false;
+        }
+    }
+
+    [RelayCommand]
+    private void HideSharedProjects()
+    {
+        ShowContactSharedProjects = false;
+        ContactSharedProjects.Clear();
+        SharedProjectsStatusText = null;
+    }
+
+    [RelayCommand]
+    private void NavigateToSharedProject(SharedProjectDto? project)
+    {
+        if (project is null) return;
+        _navigation.NavigateTo<SharedProjectBoardViewModel>(vm =>
+        {
+            _ = vm.OpenAsync(project);
+        });
     }
 
     [RelayCommand]

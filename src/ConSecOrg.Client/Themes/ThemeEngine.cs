@@ -17,6 +17,7 @@ public sealed class ThemeEngine
     private string _currentTheme = "Dark";
     private Color _accentColor = (Color)ColorConverter.ConvertFromString("#6C63FF");
     private Color _secondaryAccentColor = (Color)ColorConverter.ConvertFromString("#00BCD4");
+    private Color? _buttonForeground; // null = auto-compute from accent luminance
     private int _fontSize = 14;
     private string? _backgroundImagePath;
     private double _backgroundOverlayOpacity = 0.88;
@@ -24,6 +25,8 @@ public sealed class ThemeEngine
     public string CurrentTheme => _currentTheme;
     public Color AccentColor => _accentColor;
     public Color SecondaryAccentColor => _secondaryAccentColor;
+    /// <summary>Null means "auto" (white or dark depending on accent brightness).</summary>
+    public Color? ButtonForeground => _buttonForeground;
     public int FontSize => _fontSize;
     public string? BackgroundImagePath => _backgroundImagePath;
     public double BackgroundOverlayOpacity => _backgroundOverlayOpacity;
@@ -33,15 +36,17 @@ public sealed class ThemeEngine
     public void Initialize(WpfApplication app)
     {
         app.Resources.MergedDictionaries.Add(_dynamicTheme);
-        Apply(_currentTheme, _accentColor, _secondaryAccentColor, _fontSize, _backgroundImagePath, _backgroundOverlayOpacity);
+        Apply(_currentTheme, _accentColor, _secondaryAccentColor, _fontSize, _backgroundImagePath, _backgroundOverlayOpacity, null);
     }
 
     public void Apply(string theme, Color accent, Color secondaryAccent, int fontSize,
-                      string? bgImagePath = null, double overlayOpacity = 0.88)
+                      string? bgImagePath = null, double overlayOpacity = 0.88,
+                      Color? buttonForeground = null)
     {
         _currentTheme = theme;
         _accentColor = accent;
         _secondaryAccentColor = secondaryAccent;
+        _buttonForeground = buttonForeground;
         _fontSize = fontSize;
         _backgroundImagePath = bgImagePath;
         _backgroundOverlayOpacity = Math.Clamp(overlayOpacity, 0.0, 1.0);
@@ -90,6 +95,12 @@ public sealed class ThemeEngine
             ? Color.FromRgb(0xFF, 0xFF, 0xFF)
             : fg;
 
+        // ── Button foreground ──────────────────────────────────────────────────
+        // Auto-detect from accent luminance when no override is set
+        var accentFgAuto = IsLightColor(accent) ? Color.FromRgb(0x1A, 0x1C, 0x30) : Colors.White;
+        var btnFgColor   = buttonForeground ?? accentFgAuto;
+        var btnFgBrush   = new SolidColorBrush(btnFgColor);
+
         // ── Apply brushes ──────────────────────────────────────────────────────
         _dynamicTheme["PrimaryBackground"]      = new SolidColorBrush(bg1);
         _dynamicTheme["SecondaryBackground"]    = new SolidColorBrush(bg2);
@@ -105,7 +116,8 @@ public sealed class ThemeEngine
         _dynamicTheme["AccentLightBrush"]       = new SolidColorBrush(accentLight);
         _dynamicTheme["AccentAlphaBrush"]       = new SolidColorBrush(accentAlpha);
         _dynamicTheme["AccentAlpha2Brush"]      = new SolidColorBrush(accentAlpha2);
-        _dynamicTheme["AccentForeground"]       = new SolidColorBrush(Colors.White);
+        _dynamicTheme["AccentForeground"]       = btnFgBrush;
+        _dynamicTheme["ButtonForegroundBrush"]  = btnFgBrush;
         _dynamicTheme["AccentColor"]            = accent;
         _dynamicTheme["BaseFontSize"]           = (double)fontSize;
 
@@ -128,6 +140,7 @@ public sealed class ThemeEngine
         _dynamicTheme["PriorityCritical"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F44336"));
 
         // ── MaterialDesign overrides ───────────────────────────────────────────
+        // ButtonForegroundBrush is now the canonical foreground for raised buttons
         _dynamicTheme["MaterialDesignBody"]                       = new SolidColorBrush(fg);
         _dynamicTheme["MaterialDesignBodyLight"]                  = new SolidColorBrush(fgSec);
         _dynamicTheme["MaterialDesignPaper"]                      = new SolidColorBrush(bg2);
@@ -142,18 +155,16 @@ public sealed class ThemeEngine
 
         // Propagate accent to MaterialDesign primary/secondary hue brushes
         // so raised/flat buttons, checkboxes, sliders, progress bars, etc. use chosen accent
-        var accentFgColor = IsLightColor(accent) ? Color.FromRgb(0x1A, 0x1C, 0x30) : Colors.White;
-        var accentFgBrush = new SolidColorBrush(accentFgColor);
-        var accentBrush   = new SolidColorBrush(accent);
+        var accentBrush       = new SolidColorBrush(accent);
         var accentDarkBrush2  = new SolidColorBrush(accentDark);
         var accentLightBrush2 = new SolidColorBrush(accentLight);
 
         _dynamicTheme["PrimaryHueLightBrush"]              = accentLightBrush2;
-        _dynamicTheme["PrimaryHueLightForegroundBrush"]    = accentFgBrush;
+        _dynamicTheme["PrimaryHueLightForegroundBrush"]    = btnFgBrush;
         _dynamicTheme["PrimaryHueMidBrush"]                = accentBrush;
-        _dynamicTheme["PrimaryHueMidForegroundBrush"]      = accentFgBrush;
+        _dynamicTheme["PrimaryHueMidForegroundBrush"]      = btnFgBrush;
         _dynamicTheme["PrimaryHueDarkBrush"]               = accentDarkBrush2;
-        _dynamicTheme["PrimaryHueDarkForegroundBrush"]     = accentFgBrush;
+        _dynamicTheme["PrimaryHueDarkForegroundBrush"]     = btnFgBrush;
         // Secondary hue uses the independently chosen secondary accent colour
         var secMidBrush   = new SolidColorBrush(secondaryAccent);
         var secLightBrush = new SolidColorBrush(LightenColor(secondaryAccent, 0.15f));
@@ -215,12 +226,38 @@ public sealed class ThemeEngine
         }
         catch { /* PaletteHelper unavailable (e.g. in tests) — ignore */ }
 
+        // PaletteHelper.SetTheme() rewrites the MD resource dictionary, which may
+        // overwrite foreground brushes we set earlier. Re-apply them now so our
+        // custom ButtonForeground always wins regardless of palette computation.
+        _dynamicTheme["PrimaryHueLightForegroundBrush"]  = btnFgBrush;
+        _dynamicTheme["PrimaryHueMidForegroundBrush"]    = btnFgBrush;
+        _dynamicTheme["PrimaryHueDarkForegroundBrush"]   = btnFgBrush;
+        _dynamicTheme["ButtonForegroundBrush"]           = btnFgBrush;
+        _dynamicTheme["AccentForeground"]                = btnFgBrush;
+
+        // Also write directly into Application.Resources (non-merged) so these values
+        // have the highest possible DynamicResource priority.
+        try
+        {
+            var appRes = WpfApplication.Current?.Resources;
+            if (appRes != null)
+            {
+                appRes["PrimaryHueLightForegroundBrush"] = btnFgBrush;
+                appRes["PrimaryHueMidForegroundBrush"]   = btnFgBrush;
+                appRes["PrimaryHueDarkForegroundBrush"]  = btnFgBrush;
+                appRes["ButtonForegroundBrush"]          = btnFgBrush;
+                appRes["AccentForeground"]               = btnFgBrush;
+            }
+        }
+        catch { }
+
         ThemeChanged?.Invoke();
     }
 
     public void ApplyFromSettings(string theme, string accentHex, int fontSize,
                                    string? bgImagePath = null, double overlayOpacity = 0.88,
-                                   string secondaryAccentHex = "#00BCD4")
+                                   string secondaryAccentHex = "#00BCD4",
+                                   string? buttonForegroundHex = null)
     {
         Color accent;
         try { accent = (Color)ColorConverter.ConvertFromString(accentHex); }
@@ -228,7 +265,16 @@ public sealed class ThemeEngine
         Color secondary;
         try { secondary = (Color)ColorConverter.ConvertFromString(secondaryAccentHex); }
         catch { secondary = (Color)ColorConverter.ConvertFromString("#00BCD4"); }
-        Apply(theme, accent, secondary, fontSize, bgImagePath, overlayOpacity);
+
+        // Empty / null means "auto" — let ThemeEngine compute from accent luminance
+        Color? btnFg = null;
+        if (!string.IsNullOrWhiteSpace(buttonForegroundHex))
+        {
+            try { btnFg = (Color)ColorConverter.ConvertFromString(buttonForegroundHex); }
+            catch { btnFg = null; }
+        }
+
+        Apply(theme, accent, secondary, fontSize, bgImagePath, overlayOpacity, btnFg);
     }
 
     // ── Colour helpers ─────────────────────────────────────────────────────────

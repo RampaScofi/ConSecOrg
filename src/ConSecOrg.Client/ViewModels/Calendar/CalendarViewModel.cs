@@ -32,9 +32,7 @@ public partial class CalendarDay : ObservableObject
     partial void OnNoteCountChanged(int value) => OnPropertyChanged(nameof(HasNotes));
 
     public ObservableCollection<CalendarDayTask> Tasks { get; } = [];
-
-    public ObservableCollection<CalendarDayTask> VisibleTasks
-        => new(Tasks.Take(3));
+    public ObservableCollection<CalendarDayTask> VisibleTasks { get; } = [];
 
     public int ExtraTaskCount => Math.Max(0, Tasks.Count - 3);
     public bool HasExtraTasks => ExtraTaskCount > 0;
@@ -42,7 +40,11 @@ public partial class CalendarDay : ObservableObject
 
     public void RefreshTasks()
     {
-        OnPropertyChanged(nameof(VisibleTasks));
+        // Rebuild VisibleTasks in-place so the existing binding stays alive
+        VisibleTasks.Clear();
+        foreach (var t in Tasks.Take(4))
+            VisibleTasks.Add(t);
+
         OnPropertyChanged(nameof(ExtraTaskCount));
         OnPropertyChanged(nameof(HasExtraTasks));
         OnPropertyChanged(nameof(HasAnyTasks));
@@ -247,18 +249,16 @@ public partial class CalendarViewModel(
 
     private async Task LoadMonthTasksAsync()
     {
+        var daySet = Days.ToDictionary(d => d.Date.Date);
+        foreach (var day in Days)
+            day.Tasks.Clear();
+
+        // Personal kanban tasks
         try
         {
             var allTasks = await tasksService.GetBoardAsync();
-            var daySet = Days.ToDictionary(d => d.Date.Date);
-
-            foreach (var day in Days)
-                day.Tasks.Clear();
-
-            foreach (var t in allTasks.Where(t => t.DueDate.HasValue))
+            foreach (var t in allTasks)
             {
-                var from = t.CreatedAt.Date;
-                var to = t.DueDate!.Value.Date;
                 var item = new CalendarDayTask
                 {
                     Id = t.Id,
@@ -266,33 +266,43 @@ public partial class CalendarViewModel(
                     Color = PriorityToColor(t.Priority),
                     IsCompleted = t.Status == TaskStatusDto.Done
                 };
-                for (var d = from; d <= to; d = d.AddDays(1))
-                {
-                    if (daySet.TryGetValue(d, out var calDay))
-                        calDay.Tasks.Add(item);
-                }
+                PlaceTask(item, t.DueDate, t.Status == TaskStatusDto.Done, daySet);
             }
-
-            foreach (var day in Days)
-                day.RefreshTasks();
         }
         catch { /* non-critical */ }
+
+        foreach (var day in Days)
+            day.RefreshTasks();
+    }
+
+    private static void PlaceTask(CalendarDayTask item, DateTime? dueDate, bool isCompleted,
+        Dictionary<DateTime, CalendarDay> daySet)
+    {
+        if (dueDate.HasValue)
+        {
+            // Show on DueDate
+            if (daySet.TryGetValue(dueDate.Value.Date, out var dueCal))
+                dueCal.Tasks.Add(item);
+        }
+        else if (!isCompleted)
+        {
+            // Active task without deadline — show on today if today is in current view
+            if (daySet.TryGetValue(DateTime.Today, out var todayCal))
+                todayCal.Tasks.Add(item);
+        }
     }
 
     private async Task LoadWeekTasksAsync()
     {
+        var weekDaySet = WeekDays.ToDictionary(d => d.Date.Date);
+        foreach (var wd in WeekDays)
+            wd.Tasks.Clear();
+
         try
         {
             var allTasks = await tasksService.GetBoardAsync();
-            var weekDaySet = WeekDays.ToDictionary(d => d.Date.Date);
-
-            foreach (var wd in WeekDays)
-                wd.Tasks.Clear();
-
-            foreach (var t in allTasks.Where(t => t.DueDate.HasValue))
+            foreach (var t in allTasks)
             {
-                var from = t.CreatedAt.Date;
-                var to = t.DueDate!.Value.Date;
                 var item = new WeekTaskItem
                 {
                     Id = t.Id,
@@ -300,14 +310,26 @@ public partial class CalendarViewModel(
                     PriorityColor = PriorityToColor(t.Priority),
                     IsCompleted = t.Status == TaskStatusDto.Done
                 };
-                for (var d = from; d <= to; d = d.AddDays(1))
-                {
-                    if (weekDaySet.TryGetValue(d, out var weekDay))
-                        weekDay.Tasks.Add(item);
-                }
+                PlaceWeekTask(item, t.DueDate, t.Status == TaskStatusDto.Done, weekDaySet);
             }
         }
         catch { /* non-critical */ }
+
+    }
+
+    private static void PlaceWeekTask(WeekTaskItem item, DateTime? dueDate, bool isCompleted,
+        Dictionary<DateTime, WeekDayViewModel> weekDaySet)
+    {
+        if (dueDate.HasValue)
+        {
+            if (weekDaySet.TryGetValue(dueDate.Value.Date, out var wd))
+                wd.Tasks.Add(item);
+        }
+        else if (!isCompleted)
+        {
+            if (weekDaySet.TryGetValue(DateTime.Today, out var wd))
+                wd.Tasks.Add(item);
+        }
     }
 
     // ── Build helpers ─────────────────────────────────────────────────────────
@@ -368,4 +390,5 @@ public partial class CalendarViewModel(
         TaskPriorityDto.Normal => "#4CAF50",
         _ => "#607D8B"
     };
+
 }

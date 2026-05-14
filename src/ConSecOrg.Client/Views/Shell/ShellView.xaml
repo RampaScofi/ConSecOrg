@@ -24,6 +24,8 @@
              xmlns:companyViews="clr-namespace:ConSecOrg.Client.Views.Company"
              xmlns:usersViews="clr-namespace:ConSecOrg.Client.Views.Users"
              xmlns:settingsViews="clr-namespace:ConSecOrg.Client.Views.Settings"
+             xmlns:chatsVm="clr-namespace:ConSecOrg.Client.ViewModels.Chats"
+             xmlns:chatsViews="clr-namespace:ConSecOrg.Client.Views.Chats"
              xmlns:chatViews="clr-namespace:ConSecOrg.Client.Views.Tasks"
              xmlns:shellVm="clr-namespace:ConSecOrg.Client.ViewModels.Shell"
              xmlns:dto="clr-namespace:ConSecOrg.Shared.DTOs.Projects;assembly=ConSecOrg.Shared">
@@ -67,6 +69,9 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type usersVm:UsersManagementViewModel}">
             <usersViews:UsersManagementView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type chatsVm:ChatsViewModel}">
+            <chatsViews:ChatsView/>
         </DataTemplate>
 
         <!-- Section nav styles -->
@@ -163,6 +168,15 @@
         <Style x:Key="NavUsers" TargetType="Button" BasedOn="{StaticResource SidebarNavButton}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding CurrentSection}" Value="users">
+                    <Setter Property="Background" Value="{DynamicResource AccentAlpha2Brush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource NavActiveForeground}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="NavChats" TargetType="Button" BasedOn="{StaticResource SidebarNavButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CurrentSection}" Value="chats">
                     <Setter Property="Background" Value="{DynamicResource AccentAlpha2Brush}"/>
                     <Setter Property="Foreground" Value="{DynamicResource NavActiveForeground}"/>
                     <Setter Property="FontWeight" Value="SemiBold"/>
@@ -267,11 +281,44 @@
                             <!-- Contacts (corporate only) -->
                             <Button Command="{Binding NavigateContactsCommand}" Style="{StaticResource NavContacts}"
                                     Visibility="{Binding IsCorporate, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="AccountGroup" Width="17" Height="17"
-                                                             Margin="0,0,10,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Контакты" VerticalAlignment="Center"/>
-                                </StackPanel>
+                                <Grid>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="AccountGroup" Width="17" Height="17"
+                                                                 Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Контакты" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <!-- Pending requests badge -->
+                                    <Border Background="#EF5350" CornerRadius="8"
+                                            MinWidth="16" Height="16" Padding="3,0"
+                                            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-2,0,0"
+                                            Visibility="{Binding HasPendingContacts, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="{Binding PendingContactsCount}"
+                                                   FontSize="9" FontWeight="Bold" Foreground="White"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+                            </Button>
+
+                            <!-- Чаты (corporate only) -->
+                            <Button Command="{Binding NavigateChatsCommand}" Style="{StaticResource NavChats}"
+                                    Visibility="{Binding IsCorporate, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Grid>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="MessageOutline" Width="17" Height="17"
+                                                                 Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Чаты" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <!-- Unread badge -->
+                                    <Border HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,-4,-4,0"
+                                            Background="#EF5350" CornerRadius="8" MinWidth="16" Height="16"
+                                            Padding="3,0"
+                                            Visibility="{Binding HasUnreadChats, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="{Binding UnreadChatsCount}"
+                                                   Foreground="White" FontSize="9" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
                             </Button>
 
                             <!-- ─── ПРОЕКТЫ section ─── -->
@@ -709,21 +756,30 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
-                            <!-- Avatar -->
-                            <Border Width="34" Height="34" CornerRadius="17"
-                                    Background="{DynamicResource AccentBrush}">
-                                <TextBlock Text="{Binding Session.CurrentUser.Username,
-                                           Converter={StaticResource FirstLetterConverter},
-                                           FallbackValue='?', TargetNullValue='?'}"
-                                           Foreground="White"
-                                           FontSize="14" FontWeight="Bold"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"/>
-                            </Border>
+                            <!-- Avatar: image when set, else first-letter circle -->
+                            <Grid Width="34" Height="34">
+                                <Border Width="34" Height="34" CornerRadius="17"
+                                        Background="{DynamicResource AccentBrush}"
+                                        Visibility="{Binding SidebarHasAvatar, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                                    <TextBlock Text="{Binding SidebarDisplayName,
+                                               Converter={StaticResource FirstLetterConverter},
+                                               FallbackValue='?', TargetNullValue='?'}"
+                                               Foreground="White"
+                                               FontSize="14" FontWeight="Bold"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                                <Border Width="34" Height="34" CornerRadius="17"
+                                        ClipToBounds="True"
+                                        Visibility="{Binding SidebarHasAvatar, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <Image Source="{Binding SidebarAvatarPath, Converter={StaticResource ImagePathConverter}}"
+                                           Stretch="UniformToFill"/>
+                                </Border>
+                            </Grid>
 
-                            <!-- Username + mode -->
+                            <!-- DisplayName + mode -->
                             <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Session.CurrentUser.Username, FallbackValue='—'}"
+                                <TextBlock Text="{Binding SidebarDisplayName, FallbackValue='—'}"
                                            FontSize="13" FontWeight="Medium"
                                            Foreground="{DynamicResource PrimaryForeground}"
                                            TextTrimming="CharacterEllipsis"/>
@@ -758,10 +814,39 @@
             <!-- ═══ MAIN CONTENT ═══ -->
             <Grid Grid.Column="1">
                 <ctrl:TransitionContentControl Content="{Binding CurrentPage}" Focusable="False"/>
-                <!-- Chat panel overlay — slides in from the right -->
+                <!-- Simple local chat panel overlay (project boards) -->
                 <chatViews:ChatPanelView DataContext="{Binding ChatPanel}"
                                          HorizontalAlignment="Right" VerticalAlignment="Stretch"
                                          Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                <!-- Shared/API chat panel overlay — available globally from any page -->
+                <companyViews:SharedChatPanelView DataContext="{Binding SharedChatPanel}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Stretch"
+                                                   Width="380"/>
+
+                <!-- Floating chat FAB (corporate, bottom-right) -->
+                <Button HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                        Margin="0,0,20,20"
+                        Command="{Binding OpenChatFabCommand}"
+                        Style="{StaticResource AppRaisedButton}"
+                        materialDesign:ButtonAssist.CornerRadius="28"
+                        Width="52" Height="52" Padding="0"
+                        ToolTip="Чаты"
+                        Visibility="{Binding ShowFloatingChatButton, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <materialDesign:PackIcon Kind="MessageTextOutline" Width="22" Height="22"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <!-- Unread badge on FAB -->
+                        <Border HorizontalAlignment="Right" VerticalAlignment="Top"
+                                Margin="0,-4,-4,0"
+                                Background="#EF5350" CornerRadius="8" MinWidth="16" Height="16"
+                                Padding="3,0"
+                                Visibility="{Binding HasUnreadChats, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="{Binding UnreadChatsCount}"
+                                       Foreground="White" FontSize="8" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+                </Button>
             </Grid>
         </Grid>
     </Grid>

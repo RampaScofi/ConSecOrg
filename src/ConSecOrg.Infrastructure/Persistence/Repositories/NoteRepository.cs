@@ -40,9 +40,9 @@ public sealed class NoteRepository : INoteRepository
     {
         // Overwrite encrypted fields with random data before deletion
         await _db.Database.ExecuteSqlRawAsync(
-            "UPDATE notes SET content_encrypted = CRYPT_GEN_RANDOM(DATALENGTH(content_encrypted)), " +
+            "UPDATE notes SET content_encrypted = CRYPT_GEN_RANDOM(CAST(DATALENGTH(content_encrypted) AS INT)), " +
             "content_nonce = CRYPT_GEN_RANDOM(16), content_hmac = CRYPT_GEN_RANDOM(32) " +
-            "WHERE id = {0}", [id], ct);
+            "WHERE Id = {0}", [id], ct);
 
         await _db.Notes.Where(n => n.Id == id).ExecuteDeleteAsync(ct);
     }

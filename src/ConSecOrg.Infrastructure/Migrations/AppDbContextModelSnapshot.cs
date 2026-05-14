@@ -128,6 +128,18 @@ namespace ConSecOrg.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AttachmentFileId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AttachmentFileName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("AttachmentSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("GroupChatId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
@@ -142,10 +154,24 @@ namespace ConSecOrg.Infrastructure.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
 
+                    b.Property<byte[]>("TextCipher")
+                        .HasColumnName("text_cipher")
+                        .HasColumnType("VARBINARY(MAX)");
+
+                    b.Property<byte[]>("TextHmac")
+                        .HasColumnName("text_hmac")
+                        .HasColumnType("VARBINARY(32)");
+
+                    b.Property<byte[]>("TextNonce")
+                        .HasColumnName("text_nonce")
+                        .HasColumnType("VARBINARY(16)");
+
                     b.Property<Guid?>("ToUserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("GroupChatId");
 
                     b.HasIndex("ProjectId", "SentAt");
 
@@ -224,6 +250,71 @@ namespace ConSecOrg.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("contact_requests", (string)null);
+                });
+
+            modelBuilder.Entity("ConSecOrg.Domain.Entities.ChatLastRead", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ChatKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("LastReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ChatKey")
+                        .IsUnique();
+
+                    b.ToTable("ChatLastReads");
+                });
+
+            modelBuilder.Entity("ConSecOrg.Domain.Entities.GroupChat", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("group_chats", (string)null);
+                });
+
+            modelBuilder.Entity("ConSecOrg.Domain.Entities.GroupChatMember", b =>
+                {
+                    b.Property<Guid>("GroupChatId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("GroupChatId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("group_chat_members", (string)null);
                 });
 
             modelBuilder.Entity("ConSecOrg.Domain.Entities.Note", b =>
@@ -344,6 +435,9 @@ namespace ConSecOrg.Infrastructure.Migrations
                     b.Property<string>("IpAddress")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("KeyMaterial")
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<byte[]>("TokenHash")
                         .IsRequired()
@@ -708,13 +802,31 @@ namespace ConSecOrg.Infrastructure.Migrations
 
             modelBuilder.Entity("ConSecOrg.Domain.Entities.ChatMessage", b =>
                 {
+                    b.HasOne("ConSecOrg.Domain.Entities.GroupChat", "GroupChat")
+                        .WithMany("Messages")
+                        .HasForeignKey("GroupChatId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("ConSecOrg.Domain.Entities.User", "Sender")
                         .WithMany()
                         .HasForeignKey("SenderUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("GroupChat");
+
                     b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("ConSecOrg.Domain.Entities.ChatLastRead", b =>
+                {
+                    b.HasOne("ConSecOrg.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ConSecOrg.Domain.Entities.Contact", b =>
@@ -890,6 +1002,25 @@ namespace ConSecOrg.Infrastructure.Migrations
                     b.Navigation("Receiver");
 
                     b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("ConSecOrg.Domain.Entities.GroupChatMember", b =>
+                {
+                    b.HasOne("ConSecOrg.Domain.Entities.GroupChat", "GroupChat")
+                        .WithMany("Members")
+                        .HasForeignKey("GroupChatId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ConSecOrg.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GroupChat");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ConSecOrg.Domain.Entities.Note", b =>
@@ -1104,6 +1235,13 @@ namespace ConSecOrg.Infrastructure.Migrations
             modelBuilder.Entity("ConSecOrg.Domain.Entities.Category", b =>
                 {
                     b.Navigation("Notes");
+                });
+
+            modelBuilder.Entity("ConSecOrg.Domain.Entities.GroupChat", b =>
+                {
+                    b.Navigation("Members");
+
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("ConSecOrg.Domain.Entities.Role", b =>

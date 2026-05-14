@@ -18,6 +18,9 @@ public sealed class LocalNotesService : INotesApiService
     private readonly GostCryptoService _crypto = new();
     private readonly SessionService _session;
     private readonly LocalUserStore _userStore;
+    // Serialise all DB access: PersonalDbContext is a Singleton shared between the UI thread
+    // and the background DestructionTimerService — EF DbContext is not thread-safe.
+    private readonly SemaphoreSlim _dbLock = new(1, 1);
 
     public LocalNotesService(PersonalDbContext db, SessionService session, LocalUserStore userStore)
     {
@@ -31,47 +34,66 @@ public sealed class LocalNotesService : INotesApiService
 
     public async Task<PagedResponse<NoteDto>> GetNotesAsync(int page = 1, int pageSize = 20, string? search = null)
     {
-        var query = _db.Notes
-            .Where(n => n.UserId == _userStore.UserId)
-            .OrderByDescending(n => n.IsPinned)
-            .ThenByDescending(n => n.UpdatedAt);
-
-        var total = await query.CountAsync();
-        var notes = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
-
-        var dtos = notes.Select(ToDto).ToList();
-
-        if (!string.IsNullOrWhiteSpace(search))
+        await _dbLock.WaitAsync();
+        try
         {
-            dtos = dtos.Where(d =>
-                d.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                d.Content.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+            // AsNoTracking: background thread must not pollute the shared change-tracker
+            var query = _db.Notes
+                .AsNoTracking()
+                .Where(n => n.UserId == _userStore.UserId)
+                .OrderByDescending(n => n.IsPinned)
+                .ThenByDescending(n => n.UpdatedAt);
+
+            var total = await query.CountAsync();
+            var notes = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            var dtos = notes.Select(ToDto).ToList();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                dtos = dtos.Where(d =>
+                    d.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    d.Content.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            return new PagedResponse<NoteDto>
+            {
+                Items = dtos,
+                TotalCount = total,
+                Page = page,
+                PageSize = pageSize
+            };
         }
-
-        return new PagedResponse<NoteDto>
-        {
-            Items = dtos,
-            TotalCount = total,
-            Page = page,
-            PageSize = pageSize
-        };
+        finally { _dbLock.Release(); }
     }
 
     public async Task<NoteDto> GetNoteAsync(Guid id)
     {
-        var note = await _db.Notes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == _userStore.UserId)
-            ?? throw new KeyNotFoundException($"Заметка {id} не найдена.");
-        return ToDto(note);
+        await _dbLock.WaitAsync();
+        try
+        {
+            var note = await _db.Notes.AsNoTracking()
+                           .FirstOrDefaultAsync(n => n.Id == id && n.UserId == _userStore.UserId)
+                       ?? throw new KeyNotFoundException($"Заметка {id} не найдена.");
+            return ToDto(note);
+        }
+        finally { _dbLock.Release(); }
     }
 
     public async Task<IReadOnlyList<NoteDto>> SearchNotesAsync(string query)
     {
-        var all = await _db.Notes.Where(n => n.UserId == _userStore.UserId).ToListAsync();
-        return all.Select(ToDto)
-            .Where(d =>
-                d.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                d.Content.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        await _dbLock.WaitAsync();
+        try
+        {
+            var all = await _db.Notes.AsNoTracking()
+                          .Where(n => n.UserId == _userStore.UserId).ToListAsync();
+            return all.Select(ToDto)
+                .Where(d =>
+                    d.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    d.Content.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        finally { _dbLock.Release(); }
     }
 
     public async Task<Guid> CreateNoteAsync(CreateNoteRequestDto request)
@@ -96,56 +118,59 @@ public sealed class LocalNotesService : INotesApiService
             note.SetDestructionTimer(utc);
         }
 
-        _db.Notes.Add(note);
-        await _db.SaveChangesAsync();
+        await _dbLock.WaitAsync();
+        try
+        {
+            _db.Notes.Add(note);
+            await _db.SaveChangesAsync();
+        }
+        finally { _dbLock.Release(); }
         return id;
     }
 
     public async Task UpdateNoteAsync(Guid id, UpdateNoteRequestDto request)
     {
-        var note = await _db.Notes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == _userStore.UserId)
-            ?? throw new KeyNotFoundException($"Заметка {id} не найдена.");
-
         var plaintext = Encoding.UTF8.GetBytes(request.Content ?? string.Empty);
         var encrypted = _crypto.Encrypt(plaintext, Key);
         Array.Clear(plaintext, 0, plaintext.Length);
 
-        note.UpdateContent(request.Title, encrypted, (SecurityLevel)(int)request.SecurityLevel, null);
-        await _db.SaveChangesAsync();
+        await _dbLock.WaitAsync();
+        try
+        {
+            var note = await _db.Notes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == _userStore.UserId)
+                ?? throw new KeyNotFoundException($"Заметка {id} не найдена.");
+            note.UpdateContent(request.Title, encrypted, (SecurityLevel)(int)request.SecurityLevel, null);
+            await _db.SaveChangesAsync();
+        }
+        finally { _dbLock.Release(); }
     }
 
     public async Task DeleteNoteAsync(Guid id)
     {
-        // Secure overwrite before deletion (best-effort; failure does not block the delete)
+        await _dbLock.WaitAsync();
         try
         {
-            await _db.Database.ExecuteSqlRawAsync(
-                "UPDATE notes SET content_encrypted = CRYPT_GEN_RANDOM(DATALENGTH(content_encrypted)), " +
-                "content_nonce = CRYPT_GEN_RANDOM(16), content_hmac = CRYPT_GEN_RANDOM(32) WHERE id = {0}", id);
-        }
-        catch { /* secure overwrite failed — proceed with delete anyway */ }
+            // FindAsync checks the local cache first, then queries the DB
+            var note = await _db.Notes.FindAsync(id);
+            if (note is null) return; // Already deleted — nothing to do
 
-        // Use raw SQL DELETE to avoid EF change-tracker issues with the singleton DbContext
-        await _db.Database.ExecuteSqlRawAsync("DELETE FROM notes WHERE id = {0}", id);
-
-        // Detach any tracked entity — best-effort only; EF change-tracker is not thread-safe from
-        // background services, so wrap in try/catch so a concurrent-access exception does not
-        // propagate and prevent the caller from knowing the DELETE succeeded.
-        try
-        {
-            var tracked = _db.Notes.Local.FirstOrDefault(n => n.Id == id);
-            if (tracked is not null)
-                _db.Entry(tracked).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+            _db.Notes.Remove(note);
+            await _db.SaveChangesAsync();
         }
-        catch { }
+        finally { _dbLock.Release(); }
     }
 
     public async Task SetDestructionTimerAsync(Guid id, DateTime expiresAt)
     {
-        var note = await _db.Notes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == _userStore.UserId)
-            ?? throw new KeyNotFoundException($"Заметка {id} не найдена.");
-        note.SetDestructionTimer(expiresAt.ToUniversalTime());
-        await _db.SaveChangesAsync();
+        await _dbLock.WaitAsync();
+        try
+        {
+            var note = await _db.Notes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == _userStore.UserId)
+                ?? throw new KeyNotFoundException($"Заметка {id} не найдена.");
+            note.SetDestructionTimer(expiresAt.ToUniversalTime());
+            await _db.SaveChangesAsync();
+        }
+        finally { _dbLock.Release(); }
     }
 
     private NoteDto ToDto(Note n)

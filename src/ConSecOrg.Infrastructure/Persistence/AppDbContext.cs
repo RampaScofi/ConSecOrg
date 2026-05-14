@@ -24,6 +24,9 @@ public class AppDbContext : DbContext
     public DbSet<SharedProjectTask> SharedProjectTasks => Set<SharedProjectTask>();
     public DbSet<SharedProjectColumn> SharedProjectColumns => Set<SharedProjectColumn>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<GroupChat> GroupChats => Set<GroupChat>();
+    public DbSet<GroupChatMember> GroupChatMembers => Set<GroupChatMember>();
+    public DbSet<ChatLastRead> ChatLastReads => Set<ChatLastRead>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

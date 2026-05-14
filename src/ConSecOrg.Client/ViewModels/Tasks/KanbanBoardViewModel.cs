@@ -77,6 +77,7 @@ public partial class KanbanBoardViewModel(
     partial void OnSelectedBoardTabChanged(BoardTabItem? value)
     {
         SelectedBoardId = value?.Id;
+        _ = LoadAsync();
     }
 
     private void UpdateBoardTabs()

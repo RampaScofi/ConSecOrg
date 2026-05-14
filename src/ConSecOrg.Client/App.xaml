@@ -9,6 +9,13 @@
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml"/>
                 <ResourceDictionary Source="/Themes/Generic.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            <!-- AppRaisedButton inherits all MD styling but forces Foreground
+                 to track our ButtonForegroundBrush dynamic resource, so the
+                 Settings > "Цвет текста кнопок" setting takes immediate effect. -->
+            <Style x:Key="AppRaisedButton" TargetType="{x:Type Button}"
+                   BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundBrush}"/>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

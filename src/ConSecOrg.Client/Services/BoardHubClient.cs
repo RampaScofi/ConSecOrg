@@ -54,6 +54,18 @@ public sealed class BoardHubClient : IAsyncDisposable
         await _connection.InvokeAsync("JoinBoard");
     }
 
+    public async Task JoinGroupChatAsync(Guid groupChatId)
+    {
+        if (!IsConnected) return;
+        try { await _connection!.InvokeAsync("JoinGroupChat", groupChatId); } catch { }
+    }
+
+    public async Task LeaveGroupChatAsync(Guid groupChatId)
+    {
+        if (!IsConnected) return;
+        try { await _connection!.InvokeAsync("LeaveGroupChat", groupChatId); } catch { }
+    }
+
     public async Task NotifyTaskMovedAsync(Guid taskId, int newColumn, int newStatus)
     {
         if (!IsConnected) return;

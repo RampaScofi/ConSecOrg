@@ -1,4 +1,4 @@
-<UserControl x:Class="ConSecOrg.Client.Views.Contacts.ContactsView"
+﻿<UserControl x:Class="ConSecOrg.Client.Views.Contacts.ContactsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
@@ -79,7 +79,7 @@
                             </TextBox>
                             <Button Grid.Column="1" Margin="4,0,0,0"
                                     Command="{Binding SearchUsersCommand}"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                    Style="{StaticResource AppRaisedButton}"
                                     materialDesign:ButtonAssist.CornerRadius="6"
                                     Height="32" Padding="10,0" Content="Найти" FontSize="12"/>
                         </Grid>
@@ -104,7 +104,7 @@
                                             <Button HorizontalAlignment="Right"
                                                     Command="{Binding DataContext.SendRequestCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}"
-                                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                                    Style="{StaticResource AppRaisedButton}"
                                                     materialDesign:ButtonAssist.CornerRadius="6"
                                                     Height="28" Padding="8,0" FontSize="11"
                                                     Content="+ Добавить"/>
@@ -139,7 +139,7 @@
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                                 <Button Command="{Binding DataContext.AcceptRequestCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                         CommandParameter="{Binding}"
-                                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                                        Style="{StaticResource AppRaisedButton}"
                                                         materialDesign:ButtonAssist.CornerRadius="6"
                                                         Height="28" Padding="8,0" FontSize="11" Margin="0,0,4,0"
                                                         Content="✓ Принять"/>
@@ -275,8 +275,17 @@
                       VerticalScrollBarVisibility="Auto"
                       Padding="32,24">
             <StackPanel>
+                <!-- Global notification bar (errors / confirmations) -->
+                <Border Background="{DynamicResource AccentAlphaBrush}"
+                        CornerRadius="6" Padding="12,8" Margin="0,0,0,16"
+                        Visibility="{Binding NotificationMessage, Converter={StaticResource NullToVisibilityConverter}}">
+                    <TextBlock Text="{Binding NotificationMessage}"
+                               Foreground="{DynamicResource PrimaryForeground}" FontSize="12"
+                               TextWrapping="Wrap"/>
+                </Border>
+
                 <!-- No selection -->
-                <StackPanel Visibility="{Binding SelectedContact, Converter={StaticResource NullToCollapsedConverter}}"
+                <StackPanel Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVisibilityConverter}}"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Margin="0,80,0,0">
@@ -290,17 +299,51 @@
                                HorizontalAlignment="Center"/>
                 </StackPanel>
 
+                <!-- New contact form -->
+                <StackPanel Visibility="{Binding IsCreatingNew, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="Новый контакт"
+                               Style="{StaticResource PageTitle}"
+                               Margin="0,0,0,24"/>
+                    <TextBox Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
+                             materialDesign:HintAssist.Hint="Имя *"
+                             materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                             Foreground="{DynamicResource PrimaryForeground}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             Margin="0,0,0,16"/>
+                    <TextBox Text="{Binding EditEmail, UpdateSourceTrigger=PropertyChanged}"
+                             materialDesign:HintAssist.Hint="Email"
+                             materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                             Foreground="{DynamicResource PrimaryForeground}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             Margin="0,0,0,16"/>
+                    <TextBox Text="{Binding EditPhone, UpdateSourceTrigger=PropertyChanged}"
+                             materialDesign:HintAssist.Hint="Телефон"
+                             materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                             Foreground="{DynamicResource PrimaryForeground}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             Margin="0,0,0,16"/>
+                    <TextBox Text="{Binding EditNotes, UpdateSourceTrigger=PropertyChanged}"
+                             materialDesign:HintAssist.Hint="Заметки"
+                             materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                             Foreground="{DynamicResource PrimaryForeground}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             AcceptsReturn="True"
+                             Height="80"
+                             VerticalContentAlignment="Top"
+                             Margin="0,0,0,20"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Style="{StaticResource AppRaisedButton}"
+                                Command="{Binding SaveCommand}"
+                                Content="Создать контакт"
+                                Margin="0,0,8,0"/>
+                        <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Command="{Binding CancelEditCommand}"
+                                Content="Отмена"/>
+                    </StackPanel>
+                </StackPanel>
+
                 <!-- View mode -->
                 <StackPanel Visibility="{Binding SelectedContact, Converter={StaticResource NullToVisibilityConverter}}">
-                    <!-- Notification bar -->
-                    <Border Background="{DynamicResource AccentAlphaBrush}"
-                            CornerRadius="6" Padding="12,8" Margin="0,0,0,12"
-                            Visibility="{Binding NotificationMessage, Converter={StaticResource NullToVisibilityConverter}}">
-                        <TextBlock Text="{Binding NotificationMessage}"
-                                   Foreground="{DynamicResource PrimaryForeground}" FontSize="12"
-                                   TextWrapping="Wrap"/>
-                    </Border>
-
                     <Grid Margin="0,0,0,24">
                         <TextBlock Text="{Binding SelectedContact.Name}"
                                    Style="{StaticResource PageTitle}"
@@ -347,25 +390,37 @@
                     <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}">
                         <TextBox Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
                                  materialDesign:HintAssist.Hint="Имя"
+                                 materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                 Foreground="{DynamicResource PrimaryForeground}"
+                                 CaretBrush="{DynamicResource AccentBrush}"
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                  Margin="0,0,0,16"/>
                         <TextBox Text="{Binding EditEmail, UpdateSourceTrigger=PropertyChanged}"
                                  materialDesign:HintAssist.Hint="Email"
+                                 materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                 Foreground="{DynamicResource PrimaryForeground}"
+                                 CaretBrush="{DynamicResource AccentBrush}"
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                  Margin="0,0,0,16"/>
                         <TextBox Text="{Binding EditPhone, UpdateSourceTrigger=PropertyChanged}"
                                  materialDesign:HintAssist.Hint="Телефон"
+                                 materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                 Foreground="{DynamicResource PrimaryForeground}"
+                                 CaretBrush="{DynamicResource AccentBrush}"
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                  Margin="0,0,0,16"/>
                         <TextBox Text="{Binding EditNotes, UpdateSourceTrigger=PropertyChanged}"
                                  materialDesign:HintAssist.Hint="Заметки"
+                                 materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                 Foreground="{DynamicResource PrimaryForeground}"
+                                 CaretBrush="{DynamicResource AccentBrush}"
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                  AcceptsReturn="True"
                                  Height="80"
                                  VerticalContentAlignment="Top"
                                  Margin="0,0,0,20"/>
                         <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                            <Button Style="{StaticResource AppRaisedButton}"
                                     Command="{Binding SaveCommand}"
                                     Content="Сохранить"
                                     Margin="0,0,8,0"/>
@@ -374,6 +429,63 @@
                                     Content="Отмена"/>
                         </StackPanel>
                     </StackPanel>
+
+                    <!-- Shared projects panel -->
+                    <Border Margin="0,16,0,0"
+                            Visibility="{Binding ShowContactSharedProjects, Converter={StaticResource BoolToVisibilityConverter}}"
+                            Background="{DynamicResource CardBackground}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="16">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,10">
+                                <TextBlock Text="Совместные проекты"
+                                           FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource PrimaryForeground}"
+                                           VerticalAlignment="Center"/>
+                                <Button HorizontalAlignment="Right"
+                                        Style="{StaticResource MaterialDesignIconButton}"
+                                        Command="{Binding HideSharedProjectsCommand}"
+                                        Width="24" Height="24" Padding="0">
+                                    <materialDesign:PackIcon Kind="Close" Width="14" Height="14"/>
+                                </Button>
+                            </Grid>
+                            <!-- Loading indicator -->
+                            <ProgressBar IsIndeterminate="True" Height="2" Margin="0,0,0,8"
+                                         Visibility="{Binding IsLoadingSharedProjects, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            <!-- Status text (empty state) -->
+                            <TextBlock Text="{Binding SharedProjectsStatusText}"
+                                       FontSize="12" Foreground="{DynamicResource SecondaryForeground}"
+                                       Margin="0,0,0,4"
+                                       Visibility="{Binding SharedProjectsStatusText, Converter={StaticResource NullToVisibilityConverter}}"/>
+                            <!-- Project list -->
+                            <ItemsControl ItemsSource="{Binding ContactSharedProjects}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Margin="0,0,0,4"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left"
+                                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                materialDesign:ButtonAssist.CornerRadius="6"
+                                                Command="{Binding DataContext.NavigateToSharedProjectCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"
+                                                Padding="10,6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="FolderAccountOutline"
+                                                                         Width="16" Height="16"
+                                                                         Margin="0,0,8,0"
+                                                                         VerticalAlignment="Center"
+                                                                         Foreground="{DynamicResource AccentBrush}"/>
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontSize="12"
+                                                           Foreground="{DynamicResource PrimaryForeground}"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

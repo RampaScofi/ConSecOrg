@@ -15,6 +15,9 @@ public sealed class ChatService
     private static string FilePath(string chatId) =>
         Path.Combine(ChatDir, $"chat_{chatId}.json");
 
+    private static string FilesDir(string chatId) =>
+        Path.Combine(ChatDir, chatId, "files");
+
     public event Action? MessagesChanged;
 
     public List<ChatMessageEntry> LoadMessages(string chatId)
@@ -28,14 +31,30 @@ public sealed class ChatService
         catch { return []; }
     }
 
-    public ChatMessageEntry AddMessage(string chatId, string senderUserId, string senderUsername, string text)
+    public ChatMessageEntry AddMessage(string chatId, string senderUserId, string senderUsername,
+        string text, string? sourceFilePath = null)
     {
+        string? attachmentPath = null;
+        string? attachmentFileName = null;
+
+        if (!string.IsNullOrEmpty(sourceFilePath) && File.Exists(sourceFilePath))
+        {
+            var filesDir = FilesDir(chatId);
+            Directory.CreateDirectory(filesDir);
+            attachmentFileName = Path.GetFileName(sourceFilePath);
+            var dest = Path.Combine(filesDir, $"{Guid.NewGuid()}_{attachmentFileName}");
+            File.Copy(sourceFilePath, dest);
+            attachmentPath = dest;
+        }
+
         var msg = new ChatMessageEntry
         {
             SenderUserId = senderUserId,
             SenderUsername = senderUsername,
             Text = text,
-            SentAt = DateTime.Now
+            SentAt = DateTime.Now,
+            AttachmentPath = attachmentPath,
+            AttachmentFileName = attachmentFileName
         };
         var messages = LoadMessages(chatId);
         messages.Add(msg);

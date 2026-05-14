@@ -1,7 +1,9 @@
 using ConSecOrg.Application.Common.Exceptions;
 using ConSecOrg.Application.Common.Interfaces;
 using ConSecOrg.Domain.Enumerations;
+using ConSecOrg.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace ConSecOrg.Server.Infrastructure;
@@ -10,11 +12,13 @@ public sealed class CurrentUserContext : ICurrentUserContext
 {
     private readonly IHttpContextAccessor _http;
     private readonly IEncryptionKeyStore _keyStore;
+    private readonly AppDbContext _db;
 
-    public CurrentUserContext(IHttpContextAccessor http, IEncryptionKeyStore keyStore)
+    public CurrentUserContext(IHttpContextAccessor http, IEncryptionKeyStore keyStore, AppDbContext db)
     {
         _http = http;
         _keyStore = keyStore;
+        _db = db;
     }
 
     private ClaimsPrincipal User => _http.HttpContext?.User
@@ -44,8 +48,21 @@ public sealed class CurrentUserContext : ICurrentUserContext
     public byte[] GetEncryptionKey()
     {
         var key = _keyStore.Get(SessionId);
-        if (key is null)
+        if (key is not null)
+            return key;
+
+        // Memory cache miss (e.g. server restart) — load from DB
+        var keyMaterial = _db.Sessions
+            .AsNoTracking()
+            .Where(s => s.Id == SessionId)
+            .Select(s => s.KeyMaterial)
+            .FirstOrDefault();
+
+        if (keyMaterial is null)
             throw new ForbiddenException("Session encryption key not found. Please log in again.");
-        return key; // 64 bytes: [0..31] Kuznechik key, [32..63] HMAC key
+
+        // Repopulate cache so subsequent calls in this request are fast
+        _keyStore.Store(SessionId, keyMaterial);
+        return keyMaterial;
     }
 }

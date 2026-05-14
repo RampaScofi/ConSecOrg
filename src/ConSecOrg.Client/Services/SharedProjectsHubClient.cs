@@ -31,8 +31,11 @@ public sealed class SharedProjectsHubClient : IAsyncDisposable
     public event Action<Guid>? ColumnDeleted;
     public event Action<List<Guid>>? ColumnsReordered;
 
-    // Chat event
+    // Chat events
     public event Action<ChatMessageDto>? ChatMessageReceived;
+    // Fired when the remote user has read our messages in a direct chat
+    // Payload is the chatKey from our perspective: "user:{theirId:N}"
+    public event Action<string>? MessagesRead;
 
     public bool IsConnected => _connection?.State == HubConnectionState.Connected;
 
@@ -62,6 +65,7 @@ public sealed class SharedProjectsHubClient : IAsyncDisposable
             _connection.On<List<Guid>>("SharedColumnsReordered", ids => ColumnsReordered?.Invoke(ids));
 
             _connection.On<ChatMessageDto>("ChatMessageReceived", m => ChatMessageReceived?.Invoke(m));
+            _connection.On<string>("MessagesRead", chatKey => MessagesRead?.Invoke(chatKey));
 
             _connection.Reconnected += async _ =>
             {
@@ -81,6 +85,25 @@ public sealed class SharedProjectsHubClient : IAsyncDisposable
             await _connection!.InvokeAsync("LeaveProject", _subscribedProjectId.Value);
         await _connection!.InvokeAsync("JoinProject", projectId);
         _subscribedProjectId = projectId;
+    }
+
+    // Notify partner that we have read their direct messages
+    public async Task NotifyDirectReadAsync(Guid partnerId)
+    {
+        await EnsureConnectedAsync();
+        try { await _connection!.InvokeAsync("MarkDirectRead", partnerId); } catch { }
+    }
+
+    public async Task JoinGroupChatAsync(Guid groupChatId)
+    {
+        await EnsureConnectedAsync();
+        try { await _connection!.InvokeAsync("JoinGroupChat", groupChatId); } catch { }
+    }
+
+    public async Task LeaveGroupChatAsync(Guid groupChatId)
+    {
+        if (_connection is null || !IsConnected) return;
+        try { await _connection.InvokeAsync("LeaveGroupChat", groupChatId); } catch { }
     }
 
     public async Task UnsubscribeAsync()

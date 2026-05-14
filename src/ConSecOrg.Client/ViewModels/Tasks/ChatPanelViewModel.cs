@@ -1,7 +1,10 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ConSecOrg.Client.Services;
+using Microsoft.Win32;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 
 namespace ConSecOrg.Client.ViewModels.Tasks;
 
@@ -12,6 +15,17 @@ public partial class ChatMessageViewModel : ObservableObject
     public string Text { get; init; } = string.Empty;
     public string TimeDisplay { get; init; } = string.Empty;
     public bool IsMine { get; init; }
+    public string? AttachmentPath { get; init; }
+    public string? AttachmentFileName { get; init; }
+    public bool HasAttachment => !string.IsNullOrEmpty(AttachmentPath);
+    public bool IsImageAttachment => HasAttachment &&
+        (AttachmentFileName?.EndsWith(".png", StringComparison.OrdinalIgnoreCase) == true ||
+         AttachmentFileName?.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) == true ||
+         AttachmentFileName?.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) == true ||
+         AttachmentFileName?.EndsWith(".gif", StringComparison.OrdinalIgnoreCase) == true ||
+         AttachmentFileName?.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) == true ||
+         AttachmentFileName?.EndsWith(".webp", StringComparison.OrdinalIgnoreCase) == true);
+    public bool IsFileAttachment => HasAttachment && !IsImageAttachment;
 }
 
 public partial class ChatPanelViewModel(ChatService chatService, SessionService session) : ObservableObject
@@ -23,10 +37,21 @@ public partial class ChatPanelViewModel(ChatService chatService, SessionService 
 
     private string _currentChatId = string.Empty;
 
+    // View subscribes to this to scroll to bottom when new messages arrive
+    public event Action? ScrollToBottomRequested;
+
     public void OpenForProject(string projectId, string projectName)
     {
         _currentChatId = projectId;
         ChatTitle = $"Чат — {projectName}";
+        LoadMessages();
+        IsOpen = true;
+    }
+
+    public void OpenDirect(Guid userId, string username)
+    {
+        _currentChatId = $"direct:{userId}";
+        ChatTitle = $"Чат — {username}";
         LoadMessages();
         IsOpen = true;
     }
@@ -50,6 +75,45 @@ public partial class ChatPanelViewModel(ChatService chatService, SessionService 
         LoadMessages();
     }
 
+    [RelayCommand]
+    private void AttachFile()
+    {
+        if (string.IsNullOrEmpty(_currentChatId)) return;
+
+        var dlg = new OpenFileDialog
+        {
+            Title = "Выберите файл для отправки",
+            Filter = "Все файлы|*.*|Изображения|*.jpg;*.jpeg;*.png;*.gif;*.bmp;*.webp|Текстовые файлы|*.txt;*.md;*.csv;*.json|Документы|*.pdf;*.doc;*.docx",
+            CheckFileExists = true
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        var filePath = dlg.FileName;
+        var info = new FileInfo(filePath);
+
+        if (info.Length > 20 * 1024 * 1024)
+        {
+            System.Windows.MessageBox.Show("Размер файла превышает 20 МБ.", "Файл слишком большой",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            return;
+        }
+
+        var userId = session.CurrentUser?.Id.ToString() ?? "local";
+        var username = session.CurrentUser?.Username ?? "Я";
+        var fileName = Path.GetFileName(filePath);
+
+        chatService.AddMessage(_currentChatId, userId, username, $"📎 {fileName}", filePath);
+        LoadMessages();
+    }
+
+    [RelayCommand]
+    private static void OpenAttachment(string? path)
+    {
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
+        try { Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); }
+        catch { }
+    }
+
     private void LoadMessages()
     {
         var myId = session.CurrentUser?.Id.ToString() ?? "local";
@@ -60,7 +124,11 @@ public partial class ChatPanelViewModel(ChatService chatService, SessionService 
                 SenderUsername = m.SenderUsername,
                 Text = m.Text,
                 TimeDisplay = m.SentAt.ToString("HH:mm"),
-                IsMine = m.SenderUserId == myId
+                IsMine = m.SenderUserId == myId,
+                AttachmentPath = m.AttachmentPath,
+                AttachmentFileName = m.AttachmentFileName
             }));
+        // Notify view to scroll to the latest message
+        ScrollToBottomRequested?.Invoke();
     }
 }

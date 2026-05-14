@@ -69,12 +69,13 @@ public class LoginCommandHandler(
             cmd.IpAddress ?? "unknown",
             DateTime.UtcNow.AddDays(7),
             cmd.UserAgent,
-            cmd.DeviceFingerprint);
+            cmd.DeviceFingerprint,
+            keyMaterial);  // persisted to DB so key survives server restarts
 
         await uow.Users.AddSessionAsync(session, ct);
         await uow.SaveChangesAsync(ct);
 
-        // Сохранить ключ шифрования для этой сессии
+        // Also cache in memory for fast lookup during this server's lifetime
         keyStore.Store(sessionId, keyMaterial);
 
         var accessToken = jwtService.GenerateAccessToken(user, sessionId);

@@ -135,6 +135,9 @@ public partial class NotesListViewModel : BasePageViewModel
     {
         IEnumerable<NoteDto> filtered = _allNotes;
 
+        // Always hide notes whose destruction timer has already fired
+        filtered = filtered.Where(n => !n.ExpiresAt.HasValue || n.ExpiresAt.Value > DateTime.UtcNow);
+
         if (SecurityLevelFilter.HasValue)
             filtered = filtered.Where(n => n.SecurityLevel == SecurityLevelFilter.Value);
 

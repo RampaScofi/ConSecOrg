@@ -1,4 +1,4 @@
-<Window x:Class="ConSecOrg.Client.Views.Reports.ReportConfigDialog"
+﻿<Window x:Class="ConSecOrg.Client.Views.Reports.ReportConfigDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
@@ -59,7 +59,7 @@
         <!-- Buttons -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
             <Button Content="Применить"
-                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Style="{StaticResource AppRaisedButton}"
                     md:ButtonAssist.CornerRadius="6"
                     IsDefault="True"
                     Click="Apply_Click"

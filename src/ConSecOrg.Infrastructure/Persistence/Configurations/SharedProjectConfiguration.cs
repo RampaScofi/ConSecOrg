@@ -75,19 +75,3 @@ public class SharedProjectColumnConfiguration : IEntityTypeConfiguration<SharedP
         builder.HasIndex(c => new { c.ProjectId, c.Order });
     }
 }
-
-public class ChatMessageConfiguration : IEntityTypeConfiguration<ChatMessage>
-{
-    public void Configure(EntityTypeBuilder<ChatMessage> builder)
-    {
-        builder.ToTable("chat_messages");
-        builder.HasKey(m => m.Id);
-        builder.Property(m => m.Text).HasMaxLength(4000).IsRequired();
-        builder.HasOne(m => m.Sender)
-            .WithMany()
-            .HasForeignKey(m => m.SenderUserId)
-            .OnDelete(DeleteBehavior.Cascade);
-        builder.HasIndex(m => new { m.ProjectId, m.SentAt });
-        builder.HasIndex(m => new { m.SenderUserId, m.ToUserId, m.SentAt });
-    }
-}

@@ -5,6 +5,7 @@ using ConSecOrg.Client.Themes;
 using ConSecOrg.Client.ViewModels;
 using ConSecOrg.Client.ViewModels.Audit;
 using ConSecOrg.Client.ViewModels.Calendar;
+using ConSecOrg.Client.ViewModels.Chats;
 using ConSecOrg.Client.ViewModels.Contacts;
 using ConSecOrg.Client.ViewModels.Dashboard;
 using ConSecOrg.Client.ViewModels.Company;
@@ -89,11 +90,11 @@ public partial class App : WpfApp
         services.AddSingleton<PersonalDbContext>();
         services.AddSingleton<LocalNotesService>();
         services.AddSingleton<LocalTasksService>();
+        services.AddSingleton<LocalContactsService>();
 
         // API client (corporate mode)
         services.AddSingleton<ApiClient>();
         services.AddSingleton<IAuthApiService>(sp => sp.GetRequiredService<ApiClient>());
-        services.AddSingleton<IContactsApiService>(sp => sp.GetRequiredService<ApiClient>());
         services.AddSingleton<IAuditApiService>(sp => sp.GetRequiredService<ApiClient>());
         services.AddSingleton<IDashboardApiService>(sp => sp.GetRequiredService<ApiClient>());
         services.AddSingleton<IUserSearchApiService>(sp => sp.GetRequiredService<ApiClient>());
@@ -111,6 +112,11 @@ public partial class App : WpfApp
             sp.GetRequiredService<ModeService>(),
             sp.GetRequiredService<ApiClient>(),
             sp.GetRequiredService<LocalTasksService>()));
+
+        services.AddSingleton<IContactsApiService>(sp => new ContactsServiceProxy(
+            sp.GetRequiredService<ModeService>(),
+            sp.GetRequiredService<ApiClient>(),
+            sp.GetRequiredService<LocalContactsService>()));
 
         // ViewModels
         services.AddSingleton<AppViewModel>();
@@ -137,6 +143,7 @@ public partial class App : WpfApp
         services.AddTransient<ReportsViewModel>();
         services.AddTransient<CompanyViewModel>();
         services.AddTransient<UsersManagementViewModel>();
+        services.AddTransient<ChatsViewModel>();
         services.AddSingleton<ConSecOrg.Client.ViewModels.Company.SharedChatPanelViewModel>();
         services.AddSingleton<ConSecOrg.Client.ViewModels.Company.SharedTaskEditViewModel>();
         services.AddTransient<ConSecOrg.Client.ViewModels.Company.SharedProjectBoardViewModel>();

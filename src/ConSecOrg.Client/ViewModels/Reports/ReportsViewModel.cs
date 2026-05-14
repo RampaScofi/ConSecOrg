@@ -14,6 +14,43 @@ namespace ConSecOrg.Client.ViewModels.Reports;
 
 // ── Data models ──────────────────────────────────────────────────────────────
 
+public enum ReportColumnType
+{
+    AssignedTo, LastUpdated, DueDate, Status, Priority, TaskCount, CreatedAt
+}
+
+public class ReportColumnTypeItem
+{
+    public ReportColumnType Type { get; set; }
+    public string Label { get; set; } = string.Empty;
+}
+
+public class CustomReportColumn
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = string.Empty;
+    public ReportColumnType DataType { get; set; }
+}
+
+public partial class AddColumnViewModel : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
+{
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private string _columnName = string.Empty;
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private ReportColumnTypeItem? _selectedType;
+
+    public ObservableCollection<ReportColumnTypeItem> TypeOptions { get; } =
+    [
+        new() { Type = ReportColumnType.AssignedTo, Label = "Исполнитель" },
+        new() { Type = ReportColumnType.LastUpdated, Label = "Обновлён" },
+        new() { Type = ReportColumnType.DueDate, Label = "Ближ. дедлайн" },
+        new() { Type = ReportColumnType.Status, Label = "Статус задач" },
+        new() { Type = ReportColumnType.Priority, Label = "Приоритет" },
+        new() { Type = ReportColumnType.TaskCount, Label = "Всего задач" },
+        new() { Type = ReportColumnType.CreatedAt, Label = "Дата создания" },
+    ];
+
+    public bool IsValid => !string.IsNullOrWhiteSpace(ColumnName) && SelectedType is not null;
+}
+
 public class GeneralReportRow
 {
     public string Name { get; set; } = string.Empty;
@@ -22,11 +59,8 @@ public class GeneralReportRow
     public string? AssignedTo { get; set; }
     public string? LastUpdated { get; set; }
     public string? DueDate { get; set; }
-
-    // Extra columns (shown dynamically)
-    public bool ShowAssignedTo { get; set; }
-    public bool ShowLastUpdated { get; set; }
-    public bool ShowDueDate { get; set; }
+    // Dynamic extra columns (same order as ReportsViewModel.CustomColumns)
+    public List<string> CustomValues { get; set; } = [];
 }
 
 public class SavedReport
@@ -151,10 +185,9 @@ public partial class ReportsViewModel : BasePageViewModel
     [ObservableProperty] private string _generalGroupBy = "projects";
     [ObservableProperty] private ObservableCollection<GeneralReportRow> _generalRows = [];
 
-    // Extra columns visibility
-    [ObservableProperty] private bool _showAssignedToColumn;
-    [ObservableProperty] private bool _showLastUpdatedColumn;
-    [ObservableProperty] private bool _showDueDateColumn;
+    // Dynamic custom columns
+    public ObservableCollection<CustomReportColumn> CustomColumns { get; } = new();
+    public AddColumnViewModel AddColumnVm { get; } = new();
 
     // ── Tables tab ───────────────────────────────────────────────────────────
 
@@ -253,12 +286,43 @@ public partial class ReportsViewModel : BasePageViewModel
 
     // ── General tab ──────────────────────────────────────────────────────────
 
+    private List<string> BuildCustomValues(IList<TaskItemDto> tasks)
+    {
+        return CustomColumns.Select<CustomReportColumn, string>(col => col.DataType switch
+        {
+            ReportColumnType.AssignedTo =>
+                string.Join(", ", tasks.Select(t => _taskMeta.GetAssignee(t.Id).Username)
+                                       .Where(u => !string.IsNullOrEmpty(u)).Distinct()) is { Length: > 0 } s ? s : "—",
+            ReportColumnType.LastUpdated =>
+                tasks.MaxBy(t => t.UpdatedAt)?.UpdatedAt.ToString("dd.MM.yyyy") ?? "—",
+            ReportColumnType.DueDate =>
+                tasks.Where(t => t.DueDate.HasValue && t.Status != TaskStatusDto.Done)
+                     .MinBy(t => t.DueDate)?.DueDate?.ToString("dd.MM.yyyy") ?? "—",
+            ReportColumnType.Status =>
+                $"{tasks.Count(t => t.Status == TaskStatusDto.Done)}/{tasks.Count} вып.",
+            ReportColumnType.Priority =>
+                tasks.Any() ? tasks.GroupBy(t => t.Priority).OrderByDescending(g => g.Count())
+                     .First().Key switch
+                     {
+                         TaskPriorityDto.Critical => "Критично!",
+                         TaskPriorityDto.High => "Важно",
+                         TaskPriorityDto.Normal => "Нормально",
+                         TaskPriorityDto.Low => "Не важно",
+                         _ => "—"
+                     } : "—",
+            ReportColumnType.TaskCount => tasks.Count.ToString(),
+            ReportColumnType.CreatedAt =>
+                tasks.MinBy(t => t.CreatedAt)?.CreatedAt.ToString("dd.MM.yyyy") ?? "—",
+            _ => "—"
+        }).ToList();
+    }
+
     private void BuildGeneralTab()
     {
         var allTasks = AllTasksCombined;
         var rows = new List<GeneralReportRow>();
 
-        if (_generalGroupBy == "projects")
+        if (GeneralGroupBy == "projects")
         {
             foreach (var project in _projectService.Projects)
             {
@@ -271,53 +335,52 @@ public partial class ReportsViewModel : BasePageViewModel
                     Name = project.Name,
                     OpenTasks = projectTasks.Count(t => t.Status != TaskStatusDto.Done),
                     CompletedTasks = projectTasks.Count(t => t.Status == TaskStatusDto.Done),
+                    AssignedTo = string.Join(", ", projectTasks.Select(t => _taskMeta.GetAssignee(t.Id).Username)
+                                   .Where(u => !string.IsNullOrEmpty(u)).Distinct()),
                     LastUpdated = projectTasks.MaxBy(t => t.UpdatedAt)?.UpdatedAt.ToString("dd.MM.yyyy"),
                     DueDate = projectTasks.Where(t => t.DueDate.HasValue && t.Status != TaskStatusDto.Done)
                                           .MinBy(t => t.DueDate)?.DueDate?.ToString("dd.MM.yyyy"),
-                    ShowAssignedTo = ShowAssignedToColumn,
-                    ShowLastUpdated = ShowLastUpdatedColumn,
-                    ShowDueDate = ShowDueDateColumn
+                    CustomValues = BuildCustomValues(projectTasks)
                 });
             }
         }
-        else if (_generalGroupBy == "people")
+        else if (GeneralGroupBy == "people")
         {
-            var grouped = allTasks
-                .GroupBy(t => _taskMeta.GetAssignee(t.Id).Username ?? "Не назначен");
+            var grouped = allTasks.GroupBy(t => _taskMeta.GetAssignee(t.Id).Username ?? "Не назначен");
             foreach (var g in grouped)
             {
+                var gl = g.ToList();
                 rows.Add(new GeneralReportRow
                 {
                     Name = g.Key,
-                    OpenTasks = g.Count(t => t.Status != TaskStatusDto.Done),
-                    CompletedTasks = g.Count(t => t.Status == TaskStatusDto.Done),
-                    ShowAssignedTo = ShowAssignedToColumn,
-                    ShowLastUpdated = ShowLastUpdatedColumn,
-                    ShowDueDate = ShowDueDateColumn
+                    OpenTasks = gl.Count(t => t.Status != TaskStatusDto.Done),
+                    CompletedTasks = gl.Count(t => t.Status == TaskStatusDto.Done),
+                    AssignedTo = g.Key,
+                    LastUpdated = gl.MaxBy(t => t.UpdatedAt)?.UpdatedAt.ToString("dd.MM.yyyy"),
+                    DueDate = gl.Where(t => t.DueDate.HasValue).MinBy(t => t.DueDate)?.DueDate?.ToString("dd.MM.yyyy"),
+                    CustomValues = BuildCustomValues(gl)
                 });
             }
         }
         else
         {
-            // Departments / fallback: by status
+            var l = allTasks.ToList();
             rows.Add(new GeneralReportRow
             {
                 Name = "Все задачи",
-                OpenTasks = allTasks.Count(t => t.Status != TaskStatusDto.Done),
-                CompletedTasks = allTasks.Count(t => t.Status == TaskStatusDto.Done),
-                LastUpdated = allTasks.MaxBy(t => t.UpdatedAt)?.UpdatedAt.ToString("dd.MM.yyyy"),
-                ShowAssignedTo = ShowAssignedToColumn,
-                ShowLastUpdated = ShowLastUpdatedColumn,
-                ShowDueDate = ShowDueDateColumn
+                OpenTasks = l.Count(t => t.Status != TaskStatusDto.Done),
+                CompletedTasks = l.Count(t => t.Status == TaskStatusDto.Done),
+                LastUpdated = l.MaxBy(t => t.UpdatedAt)?.UpdatedAt.ToString("dd.MM.yyyy"),
+                DueDate = l.Where(t => t.DueDate.HasValue).MinBy(t => t.DueDate)?.DueDate?.ToString("dd.MM.yyyy"),
+                CustomValues = BuildCustomValues(l)
             });
         }
 
         if (!rows.Any())
             rows.Add(new GeneralReportRow
             {
-                Name = "Все задачи",
-                OpenTasks = allTasks.Count(t => t.Status != TaskStatusDto.Done),
-                CompletedTasks = allTasks.Count(t => t.Status == TaskStatusDto.Done)
+                Name = "Нет данных",
+                CustomValues = BuildCustomValues([])
             });
 
         GeneralRows = new ObservableCollection<GeneralReportRow>(rows);
@@ -331,32 +394,30 @@ public partial class ReportsViewModel : BasePageViewModel
     }
 
     [RelayCommand]
-    private void AddColumn()
+    private void AddCustomColumn()
     {
-        // Cycle through extra columns: assignee → last-updated → due-date
-        if (!ShowAssignedToColumn)
+        AddColumnVm.ColumnName = string.Empty;
+        AddColumnVm.SelectedType = null;
+        var dlg = new Views.Reports.AddColumnDialog
         {
-            ShowAssignedToColumn = true;
-            MessageBox.Show("Добавлена колонка: Исполнитель", "Добавить колонку",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        else if (!ShowLastUpdatedColumn)
+            DataContext = AddColumnVm,
+            Owner = System.Windows.Application.Current.MainWindow
+        };
+        if (dlg.ShowDialog() == true && AddColumnVm.IsValid)
         {
-            ShowLastUpdatedColumn = true;
-            MessageBox.Show("Добавлена колонка: Дата обновления", "Добавить колонку",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            CustomColumns.Add(new CustomReportColumn
+            {
+                Name = AddColumnVm.ColumnName.Trim(),
+                DataType = AddColumnVm.SelectedType!.Type
+            });
+            BuildGeneralTab();
         }
-        else if (!ShowDueDateColumn)
-        {
-            ShowDueDateColumn = true;
-            MessageBox.Show("Добавлена колонка: Ближайший дедлайн", "Добавить колонку",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        else
-        {
-            MessageBox.Show("Все доступные колонки уже добавлены.", "Добавить колонку",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-        }
+    }
+
+    [RelayCommand]
+    private void RemoveCustomColumn(CustomReportColumn col)
+    {
+        CustomColumns.Remove(col);
         BuildGeneralTab();
     }
 

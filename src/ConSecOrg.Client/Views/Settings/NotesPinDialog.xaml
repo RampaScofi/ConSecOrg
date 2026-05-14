@@ -1,4 +1,4 @@
-<Window x:Class="ConSecOrg.Client.Views.Settings.NotesPinDialog"
+﻿<Window x:Class="ConSecOrg.Client.Views.Settings.NotesPinDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
@@ -111,7 +111,7 @@
                         IsCancel="True"/>
 
                 <Button Grid.Column="2"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Style="{StaticResource AppRaisedButton}"
                         materialDesign:ButtonAssist.CornerRadius="8"
                         Content="Сохранить"
                         Height="40" FontSize="14"

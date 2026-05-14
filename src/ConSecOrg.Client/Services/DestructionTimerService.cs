@@ -48,24 +48,22 @@ public sealed class DestructionTimerService : BackgroundService
 
                     if (remaining <= TimeSpan.Zero)
                     {
-                        // Skip if already successfully deleted this session
                         if (_alreadyProcessed.Contains(note.Id)) continue;
 
-                        try
-                        {
-                            await _notes.DeleteNoteAsync(note.Id);
-                            // Mark as processed only after confirmed deletion to allow retry on failure
-                            _alreadyProcessed.Add(note.Id);
-                            _warned30.Remove(note.Id);
-                            _warned5.Remove(note.Id);
-                            var noteId = note.Id;
-                            var noteTitle = note.Title;
-                            // BeginInvoke to avoid blocking the background thread and prevent
-                            // re-entrant Dispatcher.Invoke from within an Invoke callback
-                            WpfApplication.Current?.Dispatcher.BeginInvoke(() =>
-                                _notifications.NoteDestroyedByTimer(noteId, noteTitle));
-                        }
-                        catch { /* will retry on next tick */ }
+                        // Mark processed and fire notification immediately — the note has
+                        // expired regardless of whether the HTTP/DB delete succeeds right now.
+                        // Corporate mode: NoteExpirationService on the server guarantees DB cleanup.
+                        // Personal mode:  LocalNotesService.DeleteNoteAsync (EF) handles local DB.
+                        _alreadyProcessed.Add(note.Id);
+                        _warned30.Remove(note.Id);
+                        _warned5.Remove(note.Id);
+                        var noteId = note.Id;
+                        var noteTitle = note.Title;
+                        WpfApplication.Current?.Dispatcher.BeginInvoke(() =>
+                            _notifications.NoteDestroyedByTimer(noteId, noteTitle));
+
+                        // Best-effort delete (local mode must still do it; corporate fallback)
+                        try { await _notes.DeleteNoteAsync(note.Id); } catch { }
                     }
                     else if (remaining <= TimeSpan.FromMinutes(5) && !_warned5.Contains(note.Id))
                     {

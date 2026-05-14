@@ -11,13 +11,15 @@ public class Session : BaseEntity<Guid>
     public string? DeviceId { get; private set; }
     public DateTime ExpiresAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public byte[]? KeyMaterial { get; private set; }  // 64-byte KDF output; survives server restarts
 
     public User? User { get; private set; }
 
     protected Session() { }
 
     public Session(Guid id, Guid userId, byte[] tokenHash, string ipAddress,
-        DateTime expiresAt, string? userAgent = null, string? deviceId = null) : base(id)
+        DateTime expiresAt, string? userAgent = null, string? deviceId = null,
+        byte[]? keyMaterial = null) : base(id)
     {
         UserId = userId;
         TokenHash = tokenHash;
@@ -26,6 +28,7 @@ public class Session : BaseEntity<Guid>
         UserAgent = userAgent;
         DeviceId = deviceId;
         CreatedAt = DateTime.UtcNow;
+        KeyMaterial = keyMaterial;
     }
 
     public bool IsExpired => ExpiresAt <= DateTime.UtcNow;

@@ -23,9 +23,16 @@ public class DeleteNoteCommandHandler(
         if (note.UserId != currentUser.UserId && currentUser.Role != UserRole.Admin)
             throw new ForbiddenException();
 
+        // SecureDeleteAsync uses raw SQL — commits immediately, outside any EF transaction
         await uow.Notes.SecureDeleteAsync(cmd.NoteId, ct);
-        await AuditHelper.WriteAsync(uow, crypto, currentUser.UserId, AuditAction.NoteSecureDeleted,
-            "Note", cmd.NoteId.ToString(), "Success", currentUser.IpAddress, null, ct);
-        await uow.SaveChangesAsync(ct);
+
+        // Audit write is best-effort: if it fails the note is already gone, which is correct
+        try
+        {
+            await AuditHelper.WriteAsync(uow, crypto, currentUser.UserId, AuditAction.NoteSecureDeleted,
+                "Note", cmd.NoteId.ToString(), "Success", currentUser.IpAddress, null, ct);
+            await uow.SaveChangesAsync(ct);
+        }
+        catch { /* audit log failure must not prevent the delete from being reported as success */ }
     }
 }

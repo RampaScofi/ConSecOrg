@@ -1,0 +1,77 @@
+<Window x:Class="ConSecOrg.Client.Views.Reports.AddColumnDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:vm="clr-namespace:ConSecOrg.Client.ViewModels.Reports"
+        Title="Добавить столбец"
+        Width="420" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{DynamicResource SecondaryBackground}">
+
+    <Window.Resources>
+        <ResourceDictionary Source="/Themes/Generic.xaml"/>
+    </Window.Resources>
+
+    <StackPanel Margin="28,24,28,28">
+
+        <!-- Header -->
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+            <md:PackIcon Kind="TableColumnPlusAfter" Width="24" Height="24"
+                         Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
+                         Margin="0,0,10,0"/>
+            <TextBlock Text="Новый столбец" FontSize="20" FontWeight="Bold"
+                       Foreground="{DynamicResource PrimaryForeground}" VerticalAlignment="Center"/>
+        </StackPanel>
+        <TextBlock Text="Укажите название столбца и выберите, какие данные в нём отображать."
+                   FontSize="12" Foreground="{DynamicResource SecondaryForeground}"
+                   TextWrapping="Wrap" Margin="0,0,0,24"/>
+
+        <!-- Column name -->
+        <TextBlock Text="НАЗВАНИЕ СТОЛБЦА" FontSize="11" FontWeight="SemiBold"
+                   Foreground="{DynamicResource SecondaryForeground}" Margin="0,0,0,6"/>
+        <TextBox x:Name="NameBox"
+                 Text="{Binding ColumnName, UpdateSourceTrigger=PropertyChanged}"
+                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                 md:HintAssist.Hint="Например: Ответственный"
+                 md:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                 Foreground="{DynamicResource PrimaryForeground}"
+                 md:TextFieldAssist.HasClearButton="True"
+                 Margin="0,0,0,20"/>
+
+        <!-- Data type -->
+        <TextBlock Text="ЧТО ПОКАЗЫВАТЬ" FontSize="11" FontWeight="SemiBold"
+                   Foreground="{DynamicResource SecondaryForeground}" Margin="0,0,0,6"/>
+        <ComboBox ItemsSource="{Binding TypeOptions}"
+                  SelectedItem="{Binding SelectedType}"
+                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                  md:HintAssist.Hint="Выберите тип данных"
+                  md:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                  Foreground="{DynamicResource PrimaryForeground}"
+                  Margin="0,0,0,28">
+            <ComboBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:ReportColumnTypeItem}">
+                    <TextBlock Text="{Binding Label}" Margin="4,4"
+                               Foreground="{DynamicResource PrimaryForeground}"/>
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <!-- Buttons -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Отмена"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    md:ButtonAssist.CornerRadius="6"
+                    IsCancel="True"
+                    Click="Cancel_Click"
+                    Margin="0,0,10,0"/>
+            <Button x:Name="AddButton"
+                    Content="Добавить столбец"
+                    Style="{StaticResource AppRaisedButton}"
+                    md:ButtonAssist.CornerRadius="6"
+                    IsDefault="True"
+                    Click="Add_Click"/>
+        </StackPanel>
+
+    </StackPanel>
+</Window>

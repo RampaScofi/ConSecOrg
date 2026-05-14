@@ -1,4 +1,4 @@
-<UserControl x:Class="ConSecOrg.Client.Views.Settings.SettingsView"
+﻿<UserControl x:Class="ConSecOrg.Client.Views.Settings.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
@@ -181,7 +181,7 @@
                                     <Border Width="38" Height="38" CornerRadius="6" VerticalAlignment="Center"
                                             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                                             Background="{DynamicResource AccentBrush}"/>
-                                    <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                                    <Button Style="{StaticResource AppRaisedButton}"
                                             Command="{Binding ApplyThemeCommand}"
                                             materialDesign:ButtonAssist.CornerRadius="8"
                                             Margin="10,0,0,0" Height="36" VerticalAlignment="Center">
@@ -191,59 +191,125 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- ── Дополнительный акцентный цвет (вторичный) ── -->
+                        <!-- ── Цвет текста кнопок ── -->
                         <Border Style="{StaticResource AppCard}">
                             <StackPanel>
-                                <TextBlock Text="Дополнительный акцентный цвет"
+                                <TextBlock Text="Цвет текста кнопок"
                                            FontSize="15" FontWeight="SemiBold"
                                            Foreground="{DynamicResource PrimaryForeground}"
                                            Margin="0,0,0,4"/>
-                                <TextBlock Text="Управляет цветом элементов интерфейса: вкладки, выделения, индикаторы (фиолетовые по умолчанию)"
-                                           FontSize="11" Foreground="{DynamicResource SecondaryForeground}"
-                                           TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                <TextBlock Text="Применяется ко всем основным (акцентным) кнопкам приложения."
+                                           FontSize="11"
+                                           Foreground="{DynamicResource SecondaryForeground}"
+                                           Margin="0,0,0,14" TextWrapping="Wrap"/>
 
-                                <ItemsControl ItemsSource="{Binding MaterialAccents}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Button Width="34" Height="34" Margin="4" Cursor="Hand"
-                                                    Command="{Binding DataContext.SelectSecondaryAccentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}"
-                                                    BorderThickness="0" ToolTip="{Binding}">
-                                                <Button.Template>
-                                                    <ControlTemplate TargetType="Button">
-                                                        <Border x:Name="Swatch" CornerRadius="6" Width="34" Height="34">
-                                                            <Border.Background>
-                                                                <SolidColorBrush Color="{Binding}"/>
-                                                            </Border.Background>
-                                                        </Border>
-                                                        <ControlTemplate.Triggers>
-                                                            <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter TargetName="Swatch" Property="Opacity" Value="0.8"/>
-                                                            </Trigger>
-                                                        </ControlTemplate.Triggers>
-                                                    </ControlTemplate>
-                                                </Button.Template>
-                                            </Button>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <!-- Preview -->
+                                <Border Background="{DynamicResource AccentBrush}"
+                                        CornerRadius="8" Width="140" Height="38"
+                                        HorizontalAlignment="Left" Margin="0,0,0,14">
+                                    <TextBlock Text="Применить"
+                                               FontSize="13" FontWeight="Medium"
+                                               Foreground="{DynamicResource ButtonForegroundBrush}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
 
-                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                    <TextBox Text="{Binding SecondaryAccentHex, UpdateSourceTrigger=PropertyChanged}"
+                                <!-- Preset pills -->
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <!-- Авто -->
+                                    <Button Command="{Binding SetButtonForegroundCommand}"
+                                            CommandParameter="auto"
+                                            Height="32" Margin="0,0,8,0"
+                                            materialDesign:ButtonAssist.CornerRadius="16">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsButtonForegroundAuto}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource AccentAlpha2Brush}"/>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="AutoFix" Width="14" Height="14" Margin="0,0,4,0"
+                                                                     VerticalAlignment="Center"
+                                                                     Foreground="{DynamicResource PrimaryForeground}"/>
+                                            <TextBlock Text="Авто" FontSize="12"
+                                                       Foreground="{DynamicResource PrimaryForeground}"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Белый -->
+                                    <Button Command="{Binding SetButtonForegroundCommand}"
+                                            CommandParameter="white"
+                                            Height="32" Margin="0,0,8,0"
+                                            materialDesign:ButtonAssist.CornerRadius="16">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsButtonForegroundWhite}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource AccentAlpha2Brush}"/>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border Width="14" Height="14" CornerRadius="7"
+                                                    Background="White" BorderBrush="{DynamicResource BorderBrush}"
+                                                    BorderThickness="1" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Белый" FontSize="12"
+                                                       Foreground="{DynamicResource PrimaryForeground}"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Чёрный -->
+                                    <Button Command="{Binding SetButtonForegroundCommand}"
+                                            CommandParameter="black"
+                                            Height="32"
+                                            materialDesign:ButtonAssist.CornerRadius="16">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsButtonForegroundBlack}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource AccentAlpha2Brush}"/>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border Width="14" Height="14" CornerRadius="7"
+                                                    Background="#1A1C30" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Чёрный" FontSize="12"
+                                                       Foreground="{DynamicResource PrimaryForeground}"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+
+                                <!-- Custom HEX -->
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox Text="{Binding ButtonForegroundHex, UpdateSourceTrigger=PropertyChanged}"
                                              materialDesign:HintAssist.Hint="#RRGGBB"
                                              Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                             Width="160" Margin="0,0,10,0" FontFamily="Consolas"/>
+                                             Width="160" Margin="0,0,10,0" FontFamily="Consolas"
+                                             Foreground="{DynamicResource PrimaryForeground}"/>
+                                    <!-- Live preview swatch -->
                                     <Border Width="38" Height="38" CornerRadius="6" VerticalAlignment="Center"
+                                            Background="{DynamicResource AccentBrush}"
                                             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                            Background="{DynamicResource SecondaryAccentBrush}"/>
-                                    <Button Style="{StaticResource MaterialDesignRaisedButton}"
-                                            Command="{Binding ApplyThemeCommand}"
+                                            Margin="0,0,10,0">
+                                        <TextBlock Text="A" FontSize="15" FontWeight="Bold"
+                                                   Foreground="{DynamicResource ButtonForegroundBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                            Command="{Binding ApplyButtonForegroundCommand}"
                                             materialDesign:ButtonAssist.CornerRadius="8"
-                                            Margin="10,0,0,0" Height="36" VerticalAlignment="Center">
-                                        <TextBlock Text="Применить" FontSize="12"/>
+                                            Height="36" VerticalAlignment="Center">
+                                        <TextBlock Text="Применить" FontSize="12"
+                                                   Foreground="{DynamicResource PrimaryForeground}"/>
                                     </Button>
                                 </StackPanel>
                             </StackPanel>
@@ -311,6 +377,26 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- ── Интерфейс ── -->
+                        <Border Style="{StaticResource AppCard}"
+                                Visibility="{Binding IsCorporate, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="Интерфейс"
+                                           FontSize="15" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource PrimaryForeground}"
+                                           Margin="0,0,0,16"/>
+
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ToggleButton IsChecked="{Binding ShowFloatingChatButton}"
+                                                  Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                                  VerticalAlignment="Center"/>
+                                    <TextBlock Text="Плавающая кнопка чата (нижний правый угол)"
+                                               FontSize="13" Foreground="{DynamicResource PrimaryForeground}"
+                                               VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -337,7 +423,6 @@
                                         <TextBlock Text="Профиль"
                                                    FontSize="16" FontWeight="SemiBold"
                                                    Foreground="{DynamicResource PrimaryForeground}"/>
-                                        <!-- Logout link top-right -->
                                         <Button HorizontalAlignment="Right"
                                                 Command="{Binding LogoutCommand}"
                                                 Style="{StaticResource FlatIconButton}"
@@ -350,26 +435,100 @@
                                         </Button>
                                     </Grid>
 
-                                    <!-- Avatar + name -->
-                                    <StackPanel Orientation="Horizontal" Margin="0,16,0,16">
-                                        <Border Width="64" Height="64" CornerRadius="32"
-                                                Background="{DynamicResource AccentBrush}">
-                                            <TextBlock Text="{Binding DisplayName, Converter={StaticResource FirstLetterConverter}, FallbackValue='?'}"
-                                                       FontSize="26" FontWeight="Bold"
-                                                       Foreground="White"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"/>
-                                        </Border>
+                                    <!-- Avatar editor block -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,16,0,12">
+                                        <!-- Avatar circle: image when set, else first-letter -->
+                                        <Grid Width="72" Height="72">
+                                            <Border Width="72" Height="72" CornerRadius="36"
+                                                    Background="{DynamicResource AccentBrush}"
+                                                    Visibility="{Binding HasAvatar, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+                                                <TextBlock Text="{Binding DisplayName, Converter={StaticResource FirstLetterConverter}, FallbackValue='?'}"
+                                                           FontSize="28" FontWeight="Bold" Foreground="White"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <Border Width="72" Height="72" CornerRadius="36"
+                                                    ClipToBounds="True"
+                                                    Visibility="{Binding HasAvatar, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <Image Source="{Binding AvatarImagePath, Converter={StaticResource ImagePathConverter}}"
+                                                       Stretch="UniformToFill"/>
+                                            </Border>
+                                            <!-- Camera overlay button -->
+                                            <Border Width="24" Height="24" CornerRadius="12"
+                                                    Background="{DynamicResource AccentBrush}"
+                                                    HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                    Cursor="Hand">
+                                                <Border.InputBindings>
+                                                    <MouseBinding MouseAction="LeftClick" Command="{Binding BrowseAvatarCommand}"/>
+                                                </Border.InputBindings>
+                                                <materialDesign:PackIcon Kind="Camera" Width="13" Height="13"
+                                                                         Foreground="White"
+                                                                         HorizontalAlignment="Center"
+                                                                         VerticalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
+
                                         <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding DisplayName, FallbackValue='—'}"
-                                                       FontSize="16" FontWeight="SemiBold"
+                                                       FontSize="15" FontWeight="SemiBold"
                                                        Foreground="{DynamicResource PrimaryForeground}"/>
-                                            <TextBlock Text="{Binding ModeName}"
-                                                       FontSize="12"
-                                                       Foreground="{DynamicResource SecondaryForeground}"
-                                                       Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding Username}"
+                                                       FontSize="12" Foreground="{DynamicResource SecondaryForeground}"
+                                                       Margin="0,2,0,6"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                        Command="{Binding BrowseAvatarCommand}"
+                                                        Height="28" Padding="8,0"
+                                                        materialDesign:ButtonAssist.CornerRadius="6"
+                                                        Margin="0,0,6,0">
+                                                    <TextBlock Text="Изменить фото" FontSize="11"
+                                                               Foreground="{DynamicResource PrimaryForeground}"/>
+                                                </Button>
+                                                <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                        Command="{Binding ClearAvatarCommand}"
+                                                        Height="28" Padding="8,0"
+                                                        materialDesign:ButtonAssist.CornerRadius="6"
+                                                        Visibility="{Binding HasAvatar, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <TextBlock Text="Удалить" FontSize="11" Foreground="#EF5350"/>
+                                                </Button>
+                                            </StackPanel>
                                         </StackPanel>
                                     </StackPanel>
+
+                                    <!-- ФИО + Логин fields -->
+                                    <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,0,0,14"/>
+
+                                    <TextBlock Text="Отображаемое имя / ФИО"
+                                               FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SecondaryForeground}"
+                                               Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding FullName, UpdateSourceTrigger=PropertyChanged}"
+                                             materialDesign:HintAssist.Hint="Иванов Иван Иванович"
+                                             materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
+                                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Foreground="{DynamicResource PrimaryForeground}"
+                                             Margin="0,0,0,12"/>
+
+                                    <TextBlock Text="Логин (имя пользователя)"
+                                               FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SecondaryForeground}"
+                                               Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding Username, Mode=OneWay}"
+                                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Foreground="{DynamicResource PrimaryForeground}"
+                                             IsReadOnly="True"
+                                             Opacity="0.65"
+                                             Margin="0,0,0,12"/>
+
+                                    <Button Style="{StaticResource AppRaisedButton}"
+                                            Command="{Binding SaveProfileCommand}"
+                                            materialDesign:ButtonAssist.CornerRadius="8"
+                                            HorizontalAlignment="Left"
+                                            Height="36" Margin="0,0,0,14">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="ContentSave" Width="16" Height="16" Margin="0,0,6,0"/>
+                                            <TextBlock Text="Сохранить профиль" FontSize="12"/>
+                                        </StackPanel>
+                                    </Button>
 
                                     <!-- Divider -->
                                     <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,0,0,14"/>

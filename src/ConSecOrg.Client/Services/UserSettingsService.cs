@@ -12,8 +12,16 @@ public sealed class UserSettings
     [JsonPropertyName("fontSize")] public int FontSize { get; set; } = 14;
     [JsonPropertyName("backgroundImagePath")] public string BackgroundImagePath { get; set; } = string.Empty;
     [JsonPropertyName("backgroundOverlayOpacity")] public double BackgroundOverlayOpacity { get; set; } = 0.88;
+    /// <summary>HEX цвет текста на основных кнопках. Пустая строка = авто (из яркости акцента).</summary>
+    [JsonPropertyName("buttonForegroundHex")] public string ButtonForegroundHex { get; set; } = string.Empty;
     [JsonPropertyName("notesPin")] public string? NotesPinSalt { get; set; }
     [JsonPropertyName("notesPinVerifier")] public string? NotesPinVerifier { get; set; }
+    /// <summary>Путь к файлу аватара пользователя. Пустая строка = отображать первую букву имени.</summary>
+    [JsonPropertyName("avatarImagePath")] public string AvatarImagePath { get; set; } = string.Empty;
+    /// <summary>ФИО пользователя (отображаемое имя). Необязательно.</summary>
+    [JsonPropertyName("fullName")] public string FullName { get; set; } = string.Empty;
+    /// <summary>Показывать плавающую кнопку быстрого чата в правом нижнем углу.</summary>
+    [JsonPropertyName("showFloatingChatButton")] public bool ShowFloatingChatButton { get; set; } = true;
 }
 
 /// <summary>
@@ -88,9 +96,28 @@ public sealed class UserSettingsService
         }
     }
 
+    /// <summary>Копирует выбранный аватар в папку пользователя.</summary>
+    public string CopyAvatarImage(string sourcePath)
+    {
+        if (_userDir == null || !File.Exists(sourcePath)) return sourcePath;
+        var ext = Path.GetExtension(sourcePath);
+        var dest = Path.Combine(_userDir, $"avatar{ext}");
+        try { File.Copy(sourcePath, dest, overwrite: true); return dest; }
+        catch { return sourcePath; }
+    }
+
+    /// <summary>Сохраняет ФИО и путь к аватару.</summary>
+    public void UpdateProfile(string fullName, string avatarImagePath)
+    {
+        _current.FullName = fullName;
+        _current.AvatarImagePath = avatarImagePath;
+        Save();
+    }
+
     public void UpdateTheme(string theme, string accentHex, int fontSize,
                              string backgroundImagePath, double backgroundOverlayOpacity,
-                             string secondaryAccentHex = "#00BCD4")
+                             string secondaryAccentHex = "#00BCD4",
+                             string buttonForegroundHex = "")
     {
         _current.Theme = theme;
         _current.AccentHex = accentHex;
@@ -98,6 +125,7 @@ public sealed class UserSettingsService
         _current.FontSize = fontSize;
         _current.BackgroundImagePath = backgroundImagePath;
         _current.BackgroundOverlayOpacity = backgroundOverlayOpacity;
+        _current.ButtonForegroundHex = buttonForegroundHex;
         Save();
     }
 

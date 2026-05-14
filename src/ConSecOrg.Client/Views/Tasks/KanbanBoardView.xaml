@@ -83,7 +83,7 @@
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{Binding ShowBoardDialog, Converter={StaticResource BoolToVisibilityConverter}}">
                         <TextBox Text="{Binding NewBoardName, UpdateSourceTrigger=PropertyChanged}"
-                                 materialDesign:HintAssist.Hint="�������� �����"
+                                 materialDesign:HintAssist.Hint="Название доски"
                                  materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
                                  materialDesign:HintAssist.IsFloating="False"
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
@@ -96,7 +96,7 @@
                                 <KeyBinding Key="Escape" Command="{Binding ToggleBoardDialogCommand}"/>
                             </TextBox.InputBindings>
                         </TextBox>
-                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                        <Button Style="{StaticResource AppRaisedButton}"
                                 Command="{Binding CreateBoardCommand}"
                                 Content="Создать" Height="40" FontSize="12"/>
                     </StackPanel>
@@ -116,7 +116,7 @@
                                 <KeyBinding Key="Enter" Command="{Binding CreateProjectCommand}"/>
                             </TextBox.InputBindings>
                         </TextBox>
-                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                        <Button Style="{StaticResource AppRaisedButton}"
                                 Command="{Binding CreateProjectCommand}"
                                 Content="Создать" Height="40" FontSize="12"/>
                     </StackPanel>
@@ -1043,7 +1043,7 @@
                                 </TextBox.InputBindings>
                             </TextBox>
                             <StackPanel Orientation="Horizontal">
-                                <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                                <Button Style="{StaticResource AppRaisedButton}"
                                         Command="{Binding AddNewColumnCommand}"
                                         Content="Создать" Height="32" FontSize="12" Margin="0,0,6,0"/>
                                 <Button Style="{StaticResource MaterialDesignOutlinedButton}"

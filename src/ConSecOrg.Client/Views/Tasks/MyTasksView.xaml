@@ -1,4 +1,4 @@
-<UserControl x:Class="ConSecOrg.Client.Views.Tasks.MyTasksView"
+﻿<UserControl x:Class="ConSecOrg.Client.Views.Tasks.MyTasksView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
@@ -39,7 +39,7 @@
                                Margin="0,2,0,0"/>
                 </StackPanel>
                 <Button Grid.Column="1"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Style="{StaticResource AppRaisedButton}"
                         materialDesign:ButtonAssist.CornerRadius="8"
                         Height="36" Padding="16,0"
                         Command="{Binding LoadCommand}">
@@ -83,7 +83,8 @@
                             <TextBlock Text="Задачи на мне" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
-                    <Button Command="{Binding SetTabCommand}" CommandParameter="Delegated" Margin="0,0,4,0">
+                    <Button Command="{Binding SetTabCommand}" CommandParameter="Delegated" Margin="0,0,4,0"
+                            Visibility="{Binding IsManagerOrAdmin, Converter={StaticResource BoolToVisibilityConverter}}">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource BoardTabButton}">
                                 <Style.Triggers>
@@ -144,76 +145,68 @@
                 <TextBox Grid.Column="1"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                          materialDesign:HintAssist.Hint="Поиск задач..."
+                         materialDesign:HintAssist.Foreground="{DynamicResource SecondaryForeground}"
                          materialDesign:TextFieldAssist.LeadingIcon="Magnify"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         Foreground="{DynamicResource PrimaryForeground}"
                          FontSize="12" Height="36"
                          VerticalAlignment="Center"/>
             </Grid>
         </Border>
 
-        <!-- ═══════════ Column Headers ═══════════ -->
+        <!-- ═══════════ Column Headers (Mine / Starred tabs) ═══════════ -->
         <Border Grid.Row="2"
                 Background="{DynamicResource SecondaryBackground}"
                 BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,0,1"
-                Padding="20,0">
+                Padding="20,0"
+                Visibility="{Binding ActiveTab, Converter={StaticResource StringEqualityToVisibilityConverter},
+                             ConverterParameter=Mine|Starred}">
             <Grid Height="38">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="32"/>     <!-- Star -->
-                    <ColumnDefinition Width="32"/>     <!-- Checkbox -->
-                    <ColumnDefinition Width="*"/>      <!-- Title + path -->
-                    <ColumnDefinition Width="120"/>    <!-- Date -->
-                    <ColumnDefinition Width="130"/>    <!-- Deadline -->
-                    <ColumnDefinition Width="130"/>    <!-- Priority -->
-                    <ColumnDefinition Width="100"/>    <!-- Tags -->
-                    <ColumnDefinition Width="36"/>     <!-- ⋮ -->
+                    <ColumnDefinition Width="32"/>
+                    <ColumnDefinition Width="32"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="120"/>
+                    <ColumnDefinition Width="130"/>
+                    <ColumnDefinition Width="130"/>
+                    <ColumnDefinition Width="100"/>
+                    <ColumnDefinition Width="36"/>
                 </Grid.ColumnDefinitions>
-
                 <TextBlock Grid.Column="2" Text="НАЗВАНИЕ ЗАДАЧИ" FontSize="11" FontWeight="Bold"
                            Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
                            VerticalAlignment="Center" Margin="8,0,0,0"/>
-
                 <Button Grid.Column="3" Style="{StaticResource FlatIconButton}"
                         Command="{Binding SortByCommand}" CommandParameter="DueDate"
                         HorizontalAlignment="Left" Padding="4,2">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="ДАТА" FontSize="11" FontWeight="Bold"
-                                   Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
-                                   VerticalAlignment="Center"/>
-                        <materialDesign:PackIcon Kind="ChevronUp" Width="12" Height="12"
-                                                 VerticalAlignment="Center"
-                                                 Foreground="{DynamicResource SecondaryForeground}"
-                                                 Margin="3,0,0,0"
-                                                 Visibility="{Binding SortColumn, Converter={StaticResource NullToVisibilityConverter}}"/>
-                    </StackPanel>
+                    <TextBlock Text="ДАТА" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"/>
                 </Button>
-
                 <Button Grid.Column="4" Style="{StaticResource FlatIconButton}"
                         Command="{Binding SortByCommand}" CommandParameter="DueDate"
                         HorizontalAlignment="Left" Padding="4,2">
                     <TextBlock Text="ДЕДЛАЙН" FontSize="11" FontWeight="Bold"
-                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
-                               VerticalAlignment="Center"/>
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"/>
                 </Button>
-
                 <Button Grid.Column="5" Style="{StaticResource FlatIconButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Priority"
                         HorizontalAlignment="Left" Padding="4,2">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="СТИКЕРЫ" FontSize="11" FontWeight="Bold"
-                                   Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
-                                   VerticalAlignment="Center"/>
-                    </StackPanel>
+                    <TextBlock Text="СТИКЕРЫ" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"/>
                 </Button>
-
                 <TextBlock Grid.Column="6" Text="ТЕГИ" FontSize="11" FontWeight="Bold"
                            Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
                            VerticalAlignment="Center"/>
             </Grid>
         </Border>
 
-        <!-- ═══════════ Task rows ═══════════ -->
-        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+        <!-- ═══════════ Content area (switches by tab) ═══════════ -->
+        <Grid Grid.Row="3">
+
+        <!-- ── Mine / Starred rows ── -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      Visibility="{Binding ActiveTab, Converter={StaticResource StringEqualityToVisibilityConverter},
+                                   ConverterParameter=Mine|Starred}">
             <ItemsControl ItemsSource="{Binding FilteredTasks}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:MyTaskRow}">
@@ -441,5 +434,363 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
+
+        <!-- ── Private tab ── -->
+        <Grid Visibility="{Binding ActiveTab, Converter={StaticResource StringEqualityToVisibilityConverter},
+                           ConverterParameter=Private}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Private column headers -->
+            <Border Background="{DynamicResource SecondaryBackground}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
+                    Padding="20,0">
+                <Grid Height="38">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="36"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="200"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="ТИП" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="НАЗВАНИЕ" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
+                               VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <TextBlock Grid.Column="2" Text="УРОВЕНЬ" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="3" Text="ДАТА" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="4" Text="ИСТОЧНИК" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
+                               VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Private rows -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <!-- Empty state -->
+                    <StackPanel HorizontalAlignment="Center" Margin="0,60,0,0"
+                                Visibility="{Binding FilteredPrivateItems.Count,
+                                             Converter={StaticResource ZeroToVisibilityConverter}}">
+                        <materialDesign:PackIcon Kind="LockOutline" Width="48" Height="48"
+                                                 Foreground="{DynamicResource SecondaryForeground}"
+                                                 Opacity="0.4" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Нет конфиденциальных элементов"
+                                   FontSize="14" Foreground="{DynamicResource SecondaryForeground}"
+                                   Opacity="0.6" Margin="0,12,0,4" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Заметки с уровнем «Конфиденциальный» или «Секретный»&#x0a;и задачи с такими тегами отображаются здесь."
+                                   FontSize="12" Foreground="{DynamicResource SecondaryForeground}"
+                                   Opacity="0.4" TextAlignment="Center" TextWrapping="Wrap"
+                                   MaxWidth="360" HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding FilteredPrivateItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:PrivateItemRow}">
+                                <Border BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="20,0">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource NavActiveBackground}"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Grid Height="52">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="36"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="150"/>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="200"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Type icon -->
+                                        <materialDesign:PackIcon Grid.Column="0"
+                                                                 Width="18" Height="18"
+                                                                 VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource SecondaryForeground}">
+                                            <materialDesign:PackIcon.Style>
+                                                <Style TargetType="materialDesign:PackIcon">
+                                                    <Setter Property="Kind" Value="CheckboxMarkedCircleOutline"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsNote}" Value="True">
+                                                            <Setter Property="Kind" Value="NoteTextOutline"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </materialDesign:PackIcon.Style>
+                                        </materialDesign:PackIcon>
+
+                                        <!-- Title + type text -->
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
+                                            <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="Medium"
+                                                       Foreground="{DynamicResource PrimaryForeground}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding ItemType}" FontSize="11"
+                                                       Foreground="{DynamicResource SecondaryForeground}"
+                                                       Opacity="0.7" Margin="0,2,0,0"/>
+                                        </StackPanel>
+
+                                        <!-- Security level pill -->
+                                        <Border Grid.Column="2" VerticalAlignment="Center"
+                                                HorizontalAlignment="Left" CornerRadius="6" Padding="10,4"
+                                                Background="{Binding SecurityLevelBg, Converter={StaticResource HexColorToBrushConverter}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="ShieldLockOutline"
+                                                                         Width="12" Height="12"
+                                                                         VerticalAlignment="Center" Margin="0,0,5,0"
+                                                                         Foreground="{Binding SecurityLevelColor,
+                                                                                      Converter={StaticResource HexColorToBrushConverter}}"/>
+                                                <TextBlock Text="{Binding SecurityLevelText}"
+                                                           FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="{Binding SecurityLevelColor,
+                                                                        Converter={StaticResource HexColorToBrushConverter}}"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Created date -->
+                                        <TextBlock Grid.Column="3"
+                                                   Text="{Binding CreatedAt, StringFormat='{}{0:dd.MM.yyyy}'}"
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryForeground}"
+                                                   VerticalAlignment="Center" Opacity="0.7"/>
+
+                                        <!-- Source (category / project) -->
+                                        <TextBlock Grid.Column="4" Text="{Binding Source}"
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryForeground}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" Opacity="0.7"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- ── Delegated tab ── -->
+        <Grid Visibility="{Binding ActiveTab, Converter={StaticResource StringEqualityToVisibilityConverter},
+                           ConverterParameter=Delegated}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Delegated column headers -->
+            <Border Background="{DynamicResource SecondaryBackground}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
+                    Padding="20,0">
+                <Grid Height="38">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="160"/>
+                        <ColumnDefinition Width="180"/>
+                        <ColumnDefinition Width="130"/>
+                        <ColumnDefinition Width="130"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="36"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="ЗАДАЧА" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
+                               VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <TextBlock Grid.Column="1" Text="ИСПОЛНИТЕЛЬ" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="ПРОЕКТ" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="3" Text="ДЕДЛАЙН" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="4" Text="ПРИОРИТЕТ" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="5" Text="ТЕГИ" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SecondaryForeground}" Opacity="0.6"
+                               VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Delegated rows -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <!-- Empty state -->
+                    <StackPanel HorizontalAlignment="Center" Margin="0,60,0,0"
+                                Visibility="{Binding FilteredDelegatedTasks.Count,
+                                             Converter={StaticResource ZeroToVisibilityConverter}}">
+                        <materialDesign:PackIcon Kind="AccountArrowRightOutline" Width="48" Height="48"
+                                                 Foreground="{DynamicResource SecondaryForeground}"
+                                                 Opacity="0.4" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Нет порученных задач"
+                                   FontSize="14" Foreground="{DynamicResource SecondaryForeground}"
+                                   Opacity="0.6" Margin="0,12,0,4" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Здесь отображаются задачи, назначенные вами другим пользователям."
+                                   FontSize="12" Foreground="{DynamicResource SecondaryForeground}"
+                                   Opacity="0.4" TextAlignment="Center" MaxWidth="360"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding FilteredDelegatedTasks}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:DelegatedTaskRow}">
+                                <Border BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="20,0">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource NavActiveBackground}"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Grid Height="56">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="160"/>
+                                            <ColumnDefinition Width="180"/>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="36"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Title + completion indicator -->
+                                        <Button Grid.Column="0"
+                                                Style="{StaticResource FlatIconButton}"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Left" Padding="8,0"
+                                                Command="{Binding DataContext.OpenDelegatedTaskCommand,
+                                                          RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}">
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontSize="13" FontWeight="Medium"
+                                                           Foreground="{DynamicResource PrimaryForeground}"
+                                                           TextTrimming="CharacterEllipsis">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                                    <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource SecondaryForeground}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Assignee -->
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                    VerticalAlignment="Center">
+                                            <Border Width="26" Height="26" CornerRadius="13"
+                                                    Background="{DynamicResource AccentAlphaBrush}"
+                                                    Margin="0,0,7,0">
+                                                <TextBlock Text="{Binding AssignedToUsername,
+                                                           Converter={StaticResource FirstLetterConverter}}"
+                                                           FontSize="11" FontWeight="Bold"
+                                                           Foreground="{DynamicResource AccentBrush}"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock Text="{Binding AssignedToUsername}"
+                                                       FontSize="12" FontWeight="Medium"
+                                                       Foreground="{DynamicResource PrimaryForeground}"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" MaxWidth="110"/>
+                                        </StackPanel>
+
+                                        <!-- Project path -->
+                                        <TextBlock Grid.Column="2" Text="{Binding ProjectPath}"
+                                                   FontSize="12" Foreground="{DynamicResource SecondaryForeground}"
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                                   Opacity="0.8"/>
+
+                                        <!-- Due date pill -->
+                                        <Border Grid.Column="3" VerticalAlignment="Center"
+                                                HorizontalAlignment="Left" CornerRadius="6" Padding="10,4"
+                                                Background="{Binding DueDateBg, Converter={StaticResource HexColorToBrushConverter}}"
+                                                Visibility="{Binding HasDueDate, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="CalendarClock"
+                                                                         Width="12" Height="12"
+                                                                         VerticalAlignment="Center" Margin="0,0,5,0"
+                                                                         Foreground="{Binding DueDateFg, Converter={StaticResource HexColorToBrushConverter}}"/>
+                                                <TextBlock Text="{Binding DueDateText}"
+                                                           FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="{Binding DueDateFg, Converter={StaticResource HexColorToBrushConverter}}"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Priority sticker -->
+                                        <Border Grid.Column="4" VerticalAlignment="Center"
+                                                HorizontalAlignment="Left" CornerRadius="6" Padding="10,4"
+                                                Background="{Binding PriorityBg, Converter={StaticResource HexColorToBrushConverter}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Flag" Width="12" Height="12"
+                                                                         VerticalAlignment="Center" Margin="0,0,5,0"
+                                                                         Foreground="{Binding PriorityColor, Converter={StaticResource HexColorToBrushConverter}}"/>
+                                                <TextBlock Text="{Binding PriorityText}"
+                                                           FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="{Binding PriorityColor, Converter={StaticResource HexColorToBrushConverter}}"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Tags -->
+                                        <ItemsControl Grid.Column="5" ItemsSource="{Binding Tags}"
+                                                      VerticalAlignment="Center">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource AccentAlphaBrush}"
+                                                            CornerRadius="6" Padding="6,2" Margin="0,0,3,2">
+                                                        <TextBlock Text="{Binding}" FontSize="10"
+                                                                   Foreground="{DynamicResource AccentBrush}"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- ⋮ open detail -->
+                                        <Button Grid.Column="6"
+                                                Style="{StaticResource FlatIconButton}"
+                                                Width="28" Height="28"
+                                                Command="{Binding DataContext.OpenDelegatedTaskCommand,
+                                                          RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}">
+                                            <materialDesign:PackIcon Kind="OpenInNew" Width="14" Height="14"
+                                                                     Foreground="{DynamicResource SecondaryForeground}"/>
+                                        </Button>
+
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        </Grid><!-- end content Grid -->
     </Grid>
 </UserControl>

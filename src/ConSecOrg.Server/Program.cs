@@ -5,6 +5,7 @@ using ConSecOrg.Infrastructure.Persistence;
 using ConSecOrg.Server.Hubs;
 using ConSecOrg.Server.Infrastructure;
 using ConSecOrg.Server.Middleware;
+using ConSecOrg.Server.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -96,6 +97,12 @@ builder.Services.AddRateLimiter(options =>
         o.QueueLimit = 0;
     });
 });
+
+// ── Chat encryption ──────────────────────────────────────────────────────────
+builder.Services.AddSingleton<ChatEncryptionService>();
+
+// ── Background services ───────────────────────────────────────────────────────
+builder.Services.AddHostedService<NoteExpirationService>();
 
 // ── Controllers + SignalR + OpenAPI ──────────────────────────────────────────
 builder.Services.AddControllers()

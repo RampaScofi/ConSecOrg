@@ -1,4 +1,4 @@
-<Window x:Class="ConSecOrg.Client.Views.Company.SharedTaskEditDialog"
+﻿<Window x:Class="ConSecOrg.Client.Views.Company.SharedTaskEditDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
@@ -235,7 +235,7 @@
                     Content="{Binding SaveButtonText}"
                     Command="{Binding SaveCommand}"
                     IsDefault="True"
-                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Style="{StaticResource AppRaisedButton}"
                     md:ButtonAssist.CornerRadius="8"
                     Height="36" Padding="20,0"/>
             <Button Grid.Column="3"

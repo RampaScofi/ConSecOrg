@@ -47,6 +47,10 @@ public partial class SettingsViewModel : BasePageViewModel
         _fontSize = s.FontSize > 0 ? s.FontSize : ThemeEngine.Instance.FontSize;
         _backgroundImagePath = s.BackgroundImagePath ?? string.Empty;
         _backgroundOverlayOpacity = s.BackgroundOverlayOpacity > 0 ? s.BackgroundOverlayOpacity : ThemeEngine.Instance.BackgroundOverlayOpacity;
+        _buttonForegroundHex = s.ButtonForegroundHex ?? string.Empty;
+        _fullName = s.FullName ?? string.Empty;
+        _avatarImagePath = s.AvatarImagePath ?? string.Empty;
+        _showFloatingChatButton = s.ShowFloatingChatButton;
     }
 
     public override string Title => "Настройки";
@@ -57,8 +61,22 @@ public partial class SettingsViewModel : BasePageViewModel
     [ObservableProperty] private int _fontSize;
     [ObservableProperty] private string _backgroundImagePath;
     [ObservableProperty] private double _backgroundOverlayOpacity;
+    [ObservableProperty] private string _buttonForegroundHex;
+    [ObservableProperty] private string _fullName;
+    [ObservableProperty] private string _avatarImagePath;
+    [ObservableProperty] private bool _showFloatingChatButton;
 
-    public string DisplayName => _sessionService.CurrentUser?.Username ?? "Пользователь";
+    public bool IsButtonForegroundAuto => string.IsNullOrWhiteSpace(ButtonForegroundHex);
+    public bool IsButtonForegroundWhite => ButtonForegroundHex == "#FFFFFF";
+    public bool IsButtonForegroundBlack => ButtonForegroundHex == "#1A1C30";
+
+    public bool HasAvatar => !string.IsNullOrEmpty(AvatarImagePath) && System.IO.File.Exists(AvatarImagePath);
+
+    public string DisplayName => !string.IsNullOrWhiteSpace(_userSettings.Current.FullName)
+        ? _userSettings.Current.FullName
+        : _sessionService.CurrentUser?.Username ?? "Пользователь";
+
+    public string Username => _sessionService.CurrentUser?.Username ?? string.Empty;
     public string ModeName => _modeService.IsCorporate ? "Корпоративный режим" : "Персональный режим";
     public bool IsCorporate => _modeService.IsCorporate;
     public bool IsPersonal => _modeService.IsPersonal;
@@ -108,11 +126,12 @@ public partial class SettingsViewModel : BasePageViewModel
             SelectedTheme, AccentHex, FontSize,
             HasBackground ? BackgroundImagePath : null,
             BackgroundOverlayOpacity,
-            SecondaryAccentHex);
+            SecondaryAccentHex,
+            ButtonForegroundHex);
 
         _userSettings.UpdateTheme(SelectedTheme, AccentHex, FontSize,
                                    BackgroundImagePath, BackgroundOverlayOpacity,
-                                   SecondaryAccentHex);
+                                   SecondaryAccentHex, ButtonForegroundHex);
     }
 
     [RelayCommand]
@@ -128,6 +147,36 @@ public partial class SettingsViewModel : BasePageViewModel
         SecondaryAccentHex = hex;
         ApplyAndSaveTheme();
     }
+
+    [RelayCommand]
+    private void SetButtonForeground(string preset)
+    {
+        ButtonForegroundHex = preset switch
+        {
+            "auto"  => string.Empty,
+            "white" => "#FFFFFF",
+            "black" => "#1A1C30",
+            _       => preset  // custom hex passed directly
+        };
+        NotifyButtonForegroundPresets();
+        ApplyAndSaveTheme();
+    }
+
+    [RelayCommand]
+    private void ApplyButtonForeground()
+    {
+        NotifyButtonForegroundPresets();
+        ApplyAndSaveTheme();
+    }
+
+    private void NotifyButtonForegroundPresets()
+    {
+        OnPropertyChanged(nameof(IsButtonForegroundAuto));
+        OnPropertyChanged(nameof(IsButtonForegroundWhite));
+        OnPropertyChanged(nameof(IsButtonForegroundBlack));
+    }
+
+    partial void OnButtonForegroundHexChanged(string value) => NotifyButtonForegroundPresets();
 
     [RelayCommand]
     private void BrowseBackground()
@@ -153,6 +202,45 @@ public partial class SettingsViewModel : BasePageViewModel
         BackgroundImagePath = string.Empty;
         OnPropertyChanged(nameof(HasBackground));
         ApplyAndSaveTheme();
+    }
+
+    [RelayCommand]
+    private void BrowseAvatar()
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = "Выберите фото профиля",
+            Filter = "Изображения|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.webp|Все файлы|*.*",
+            CheckFileExists = true
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        AvatarImagePath = _userSettings.CopyAvatarImage(dlg.FileName);
+        OnPropertyChanged(nameof(HasAvatar));
+        _userSettings.UpdateProfile(FullName, AvatarImagePath);
+        NotifyProfileChanged();
+    }
+
+    [RelayCommand]
+    private void ClearAvatar()
+    {
+        AvatarImagePath = string.Empty;
+        OnPropertyChanged(nameof(HasAvatar));
+        _userSettings.UpdateProfile(FullName, AvatarImagePath);
+        NotifyProfileChanged();
+    }
+
+    [RelayCommand]
+    private void SaveProfile()
+    {
+        _userSettings.UpdateProfile(FullName, AvatarImagePath);
+        NotifyProfileChanged();
+    }
+
+    private void NotifyProfileChanged()
+    {
+        OnPropertyChanged(nameof(DisplayName));
+        OnPropertyChanged(nameof(HasAvatar));
     }
 
     [RelayCommand]
@@ -246,5 +334,13 @@ public partial class SettingsViewModel : BasePageViewModel
             _appViewModel.ShowPin();
     }
 
+    partial void OnFontSizeChanged(int value) => ApplyAndSaveTheme();
+
     partial void OnBackgroundOverlayOpacityChanged(double value) => ApplyAndSaveTheme();
+
+    partial void OnShowFloatingChatButtonChanged(bool value)
+    {
+        _userSettings.Current.ShowFloatingChatButton = value;
+        _userSettings.Save();
+    }
 }

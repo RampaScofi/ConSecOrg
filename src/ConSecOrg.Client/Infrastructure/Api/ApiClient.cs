@@ -236,7 +236,13 @@ public sealed class ApiClient :
     }
 
     public async Task DeleteNoteAsync(Guid id)
-        => await GetClient().ExecuteAsync(Req($"api/v1/notes/{id}", Method.Delete));
+    {
+        var resp = await GetClient().ExecuteAsync(Req($"api/v1/notes/{id}", Method.Delete));
+        // 404 = already gone — treat as success so the timer removes it from memory
+        if (!resp.IsSuccessful && resp.StatusCode != System.Net.HttpStatusCode.NotFound)
+            throw new HttpRequestException(
+                $"DELETE /notes/{id} returned {(int)resp.StatusCode}: {resp.ErrorMessage ?? resp.StatusDescription}");
+    }
 
     public async Task SetDestructionTimerAsync(Guid id, DateTime expiresAt)
     {
@@ -435,6 +441,16 @@ public sealed class ApiClient :
     public Task<IReadOnlyList<ChatMessageDto>> GetDirectMessagesAsync(Guid otherUserId) =>
         SendAsync<IReadOnlyList<ChatMessageDto>>(Req($"api/v1/chats/direct/{otherUserId}"));
 
+    public Task<IReadOnlyList<ChatMessageDto>> GetGroupMessagesAsync(Guid groupChatId) =>
+        SendAsync<IReadOnlyList<ChatMessageDto>>(Req($"api/v1/groupchats/{groupChatId}/messages"));
+
+    public async Task MarkReadAsync(string chatKey)
+    {
+        var req = Req("api/v1/chats/mark-read", Method.Post);
+        req.AddJsonBody(new { chatKey });
+        await GetClient().ExecuteAsync(req);
+    }
+
     public async Task<ChatMessageDto> SendMessageAsync(SendChatMessageDto request)
     {
         var req = Req("api/v1/chats", Method.Post);
@@ -442,14 +458,59 @@ public sealed class ApiClient :
         return await SendAsync<ChatMessageDto>(req);
     }
 
-    public async Task<(string Url, string FileName)> UploadChatFileAsync(string localFilePath)
+    public async Task<(string FileId, string FileName, string Url, long Size)> UploadChatFileAsync(string localFilePath)
     {
         var req = Req("api/v1/files/upload", Method.Post);
         req.AddFile("file", localFilePath);
         var resp = await GetClient().ExecuteAsync<UploadFileResponseDto>(req);
         if (!resp.IsSuccessful || resp.Data is null)
-            throw new HttpRequestException($"Upload failed: {resp.Content}");
-        return (resp.Data.Url, resp.Data.FileName);
+            throw new HttpRequestException($"Ошибка загрузки файла: {resp.Content}");
+        return (resp.Data.FileId, resp.Data.FileName, resp.Data.Url, resp.Data.Size);
+    }
+
+    public async Task DownloadFileAsync(string fileId, string savePath)
+    {
+        var req = Req($"api/v1/files/{fileId}");
+        var resp = await GetClient().DownloadDataAsync(req);
+        if (resp is null || resp.Length == 0)
+            throw new HttpRequestException("Файл не найден на сервере.");
+        await System.IO.File.WriteAllBytesAsync(savePath, resp);
+    }
+
+    // ── Group Chats ───────────────────────────────────────────────────────────
+    public Task<List<GroupChatDto>> GetGroupChatsAsync() =>
+        SendAsync<List<GroupChatDto>>(Req("api/v1/groupchats"));
+
+    public async Task<GroupChatDto> CreateGroupChatAsync(CreateGroupChatDto dto)
+    {
+        var req = Req("api/v1/groupchats", Method.Post);
+        req.AddJsonBody(dto);
+        return await SendAsync<GroupChatDto>(req);
+    }
+
+    public async Task AddGroupChatMemberAsync(Guid groupChatId, Guid userId)
+    {
+        var req = Req($"api/v1/groupchats/{groupChatId}/members", Method.Post);
+        req.AddJsonBody(new { userId });
+        var resp = await GetClient().ExecuteAsync(req);
+        if (!resp.IsSuccessful)
+            throw new HttpRequestException(BuildRussianError(resp));
+    }
+
+    public async Task RemoveGroupChatMemberAsync(Guid groupChatId, Guid userId)
+    {
+        var resp = await GetClient().ExecuteAsync(
+            Req($"api/v1/groupchats/{groupChatId}/members/{userId}", Method.Delete));
+        if (!resp.IsSuccessful)
+            throw new HttpRequestException(BuildRussianError(resp));
+    }
+
+    public async Task DeleteGroupChatAsync(Guid groupChatId)
+    {
+        var resp = await GetClient().ExecuteAsync(
+            Req($"api/v1/groupchats/{groupChatId}", Method.Delete));
+        if (!resp.IsSuccessful)
+            throw new HttpRequestException(BuildRussianError(resp));
     }
 
     // ── Users Management ──────────────────────────────────────────────────────

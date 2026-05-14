@@ -96,6 +96,8 @@ public sealed class ChatMessageEntry
     public string SenderUserId { get; set; } = string.Empty;
     public string Text { get; set; } = string.Empty;
     public DateTime SentAt { get; set; } = DateTime.UtcNow;
+    public string? AttachmentPath { get; set; }
+    public string? AttachmentFileName { get; set; }
 }
 
 public sealed class TaskMetaService
