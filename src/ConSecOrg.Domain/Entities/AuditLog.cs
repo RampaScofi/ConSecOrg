@@ -22,13 +22,13 @@ public class AuditLog : BaseEntity<Guid>
 
     public AuditLog(Guid id, Guid? userId, AuditAction action, string entityType,
         string? entityId, string status, string? ipAddress,
-        HashChainEntry chainEntry, string? detailsJson = null) : base(id)
+        HashChainEntry chainEntry, DateTime timestamp, string? detailsJson = null) : base(id)
     {
         UserId = userId;
         Action = action;
         EntityType = entityType;
         EntityId = entityId;
-        Timestamp = DateTime.UtcNow;
+        Timestamp = timestamp;
         Status = status;
         IpAddress = ipAddress;
         PreviousHash = chainEntry.PreviousHash;

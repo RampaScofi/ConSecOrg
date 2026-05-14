@@ -29,7 +29,7 @@ public static class AuditHelper
 
         var log = new AuditLog(
             Guid.NewGuid(), userId, action, entityType, entityId,
-            status, ipAddress, new HashChainEntry(prevHash, currentHash), details);
+            status, ipAddress, new HashChainEntry(prevHash, currentHash), ts, details);
 
         await uow.AuditLogs.AddAsync(log, ct);
     }

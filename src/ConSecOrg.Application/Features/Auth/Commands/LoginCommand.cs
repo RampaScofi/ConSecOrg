@@ -118,7 +118,7 @@ public class LoginCommandHandler(
         var currentHash = cryptoService.Hash256(chainInput);
         var entry = new Domain.ValueObjects.HashChainEntry(prevHash, currentHash);
 
-        var log = new AuditLog(Guid.NewGuid(), userId, action, "User", userId.ToString(), status, ip, entry);
+        var log = new AuditLog(Guid.NewGuid(), userId, action, "User", userId.ToString(), status, ip, entry, ts);
         await uow.AuditLogs.AddAsync(log, ct);
     }
 

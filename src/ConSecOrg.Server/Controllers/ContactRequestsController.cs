@@ -26,12 +26,18 @@ public class ContactRequestsController(AppDbContext db, ICryptoService crypto) :
         var prev = await db.AuditLogs.OrderByDescending(l => l.SequenceNum).FirstOrDefaultAsync(ct);
         var prevHash = prev?.CurrentHash ?? new byte[32];
         var ts = DateTime.UtcNow;
-        var input = System.Text.Encoding.UTF8.GetBytes(
-            string.Concat(Convert.ToBase64String(prevHash), ts.ToString("O"), action.ToString(), entityId, userId.ToString()));
+        byte[] input =
+        [
+            .. prevHash,
+            .. System.Text.Encoding.UTF8.GetBytes(ts.ToString("O")),
+            .. System.Text.Encoding.UTF8.GetBytes(action.ToString()),
+            .. System.Text.Encoding.UTF8.GetBytes(entityId),
+            .. System.Text.Encoding.UTF8.GetBytes(userId.ToString()),
+        ];
         var currentHash = crypto.Hash256(input);
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         db.AuditLogs.Add(new AuditLog(Guid.NewGuid(), userId, action, "ContactRequest", entityId,
-            "Success", ip, new HashChainEntry(prevHash, currentHash), details));
+            "Success", ip, new HashChainEntry(prevHash, currentHash), ts, details));
     }
 
     [HttpPost]
