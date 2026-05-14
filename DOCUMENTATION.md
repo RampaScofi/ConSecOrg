@@ -26,6 +26,7 @@
 16. [Темизация и внешний вид](#16-темизация-и-внешний-вид)
 17. [Зависимости (NuGet)](#17-зависимости-nuget)
 18. [Запуск и развёртывание](#18-запуск-и-развёртывание)
+19. [Иконки приложения](#19-иконки-приложения)
 
 ---
 
@@ -131,7 +132,9 @@ ConSecOrg/
 | `SharedProject.cs` | Совместный проект (корпоративный режим). Поля: `Name`, `Description`, `InviteCode` (уникальный код для вступления), `OwnerId`. Содержит коллекцию участников (`SharedProjectMember`). |
 | `SharedProjectColumn.cs` | Колонка Kanban-доски совместного проекта. Поля: `Name`, `Order`, `Color`, `ProjectId`. |
 | `SharedProjectTask.cs` | Задача совместного проекта. Поля: `Title`, `Description`, `Status`, `Priority`, `DueDate`, `ProjectId`, `ColumnId`, `AssignedToUserId`. |
-| `ChatMessage.cs` | Сообщение чата (для совместных проектов и личных переписок). Поля: `Text`, `SenderUserId`, `ProjectId` (если проектный чат), `ToUserId` (если личный чат), `AttachmentUrl`, `AttachmentFileName`, `SentAt`. |
+| `ChatMessage.cs` | Сообщение чата. Поля: `SenderUserId`, `ProjectId?` (проектный чат), `GroupChatId?` (групповой чат), `ToUserId?` (личный чат), `SentAt`. Открытый текст `Text` не хранится — только зашифрованные поля: `TextCipher` (VARBINARY), `TextNonce`, `TextHmac` (ГОСТ Р 34.12-2015). Вложения: `AttachmentFileId`, `AttachmentFileName`, `AttachmentSize`. |
+| `GroupChat.cs` | Групповой чат (корпоративный режим). Поля: `Name`, `CreatedByUserId`, `CreatedAt`. Навигация: `Members` (коллекция `GroupChatMember`). |
+| `GroupChatMember.cs` | Участник группового чата. Поля: `GroupChatId`, `UserId`, `JoinedAt`. |
 | `ContactRequest.cs` | Заявка на добавление в контакты. Поля: `SenderId`, `ReceiverId`, `Status` (Pending/Accepted/Declined), `CreatedAt`. |
 
 ### 4.3 ValueObjects/ — объекты-значения
@@ -387,9 +390,16 @@ builder.OwnsOne(n => n.Content, ec => {
 | `20260507134936_AddSharedProjectColumns` | `shared_project_columns` |
 | `20260507135117_AddSharedColumnsAndTaskColumnId` | `ColumnId` в `shared_project_tasks` |
 | `20260508200000_AddLinkedUserIdToContacts` | `linked_user_id` в `contacts` |
+| `AddGroupChatAndFileAttachment` | `group_chats`, `group_chat_members`; поля `GroupChatId`, `AttachmentFileId`, `AttachmentSize` в `chat_messages` |
+| `AddChatLastRead` | `chat_last_reads` — метки прочтения сообщений (chatKey + userId + lastReadAt) |
+| `AddChatMessageEncryption` | Поля `text_cipher`, `text_nonce`, `text_hmac` в `chat_messages`; столбец `Text` удалён |
 | `AppDbContextModelSnapshot.cs` | Текущий снимок полной схемы БД (генерируется EF Core автоматически) |
 
-### 6.5 Security/ — безопасность
+### 6.5 Crypto/ChatEncryptionService.cs
+
+Шифрование текста сообщений чата на сервере. При сохранении: `GostCryptoService.Encrypt(Encoding.UTF8.GetBytes(text), serverKey)` → `TextCipher/TextNonce/TextHmac`. При чтении (`MapDto`): HMAC-проверка + дешифрование → открытый `Text`. Ключ шифрования сообщений — отдельный серверный ключ (не ключ пользователя), хранится в конфигурации. Все новые сообщения сохраняются только в зашифрованном виде.
+
+### 6.6 Security/ — безопасность
 
 | Файл | Назначение |
 |------|-----------|
@@ -402,7 +412,7 @@ builder.OwnsOne(n => n.Content, ec => {
 
 ## 7. ConSecOrg.Server — веб-сервер (ASP.NET Core)
 
-ASP.NET Core 8 Web API. Принимает HTTP-запросы от WPF-клиента, обрабатывает через MediatR, возвращает JSON.
+ASP.NET Core 10 Web API. Принимает HTTP-запросы от WPF-клиента, обрабатывает через MediatR, возвращает JSON.
 
 ### 7.1 Program.cs
 
@@ -433,14 +443,15 @@ ASP.NET Core 8 Web API. Принимает HTTP-запросы от WPF-клие
 | `SharedProjectsController.cs` | `/api/v1/shared-projects` | CRUD совместных проектов, Join по invite-коду, Leave, GetMembers |
 | `SharedProjectTasksController.cs` | `/api/v1/shared-projects/{id}/tasks` | Задачи совместного проекта |
 | `SharedProjectColumnsController.cs` | `/api/v1/shared-projects/{id}/columns` | Колонки Kanban совместного проекта |
-| `ChatController.cs` | `/api/v1/chat` | Отправка сообщений, история проектного чата, история личного чата, список диалогов |
-| `FilesController.cs` | `/api/v1/files` | Загрузка файлов во вложения (`/uploads/{userId}/{filename}`) |
+| `ChatController.cs` | `/api/v1/chat` | Отправка сообщений, история проектного/личного чата, список диалогов. **DELETE** `/messages/{id}` — удаление своего сообщения (проверка SenderUserId) + SignalR broadcast `MessageDeleted` во все группы где было сообщение. Сообщения шифруются ГОСТ при сохранении и дешифруются при отдаче через `ChatEncryptionService`. |
+| `GroupChatController.cs` | `/api/v1/group-chats` | CRUD групповых чатов: создание, получение, список участников, добавление/удаление участника, удаление. SignalR уведомление при добавлении участника (`JoinGroupChat`). |
+| `FilesController.cs` | `/api/v1/files` | Upload (до 50 МБ, GUID-хранилище в `/uploads/{userId}/{guid}{ext}`, безопасный путь) и Download по `fileId`. |
 
 ### 7.3 Hubs/ — SignalR хабы
 
 | Файл | Описание |
 |------|----------|
-| `BoardHub.cs` | SignalR хаб `/hubs/board`. События: `JoinBoard(boardId)`, `LeaveBoard(boardId)`, `NotifyTaskMoved(boardId, taskId, newColumn)` → рассылает `TaskMoved` всем участникам доски. Используется для real-time синхронизации Kanban в корпоративном режиме. |
+| `BoardHub.cs` | Единственный SignalR хаб `/hubs/board`. Методы на сервере: `JoinProject(projectId)` / `LeaveProject(projectId)` — подписка на обновления Kanban-доски; `JoinGroupChat(groupChatId)` / `LeaveGroupChat(groupChatId)` — подписка на групповой чат; `MarkDirectRead(partnerId)` — уведомление о прочтении личных сообщений. События, рассылаемые клиентам: `TaskMoved`, `SharedTaskCreated/Updated/Deleted`, `SharedColumnCreated/Updated/Deleted`, `ChatMessageReceived`, `MessagesRead`, `MessageDeleted`. Вспомогательные статические методы: `ProjectGroup(id)`, `UserGroup(id)`, `GroupChatGroup(id)`. |
 
 ### 7.4 Infrastructure/
 
@@ -520,10 +531,11 @@ ASP.NET Core 8 Web API. Принимает HTTP-запросы от WPF-клие
 | `SharedProjectDto.cs` | `{ Id, Name, Description, InviteCode, OwnerId, MemberCount }` |
 | `SharedProjectTaskDto.cs` | Задача совместного проекта с AssignedToUsername |
 | `SharedProjectColumnDto.cs` | `{ Id, Name, Order, Color, ProjectId }` |
-| `ChatMessageDto.cs` | `{ Id, Text, SenderUserId, SenderUsername, ProjectId?, ToUserId?, AttachmentUrl?, SentAt }` |
-| `ChatSummaryDto.cs` | Сводка диалога для списка чатов: `{ ChatType, Title, LastMessageText, LastMessageAt, ... }` |
-| `SendChatMessageDto.cs` | `{ ProjectId?, ToUserId?, Text, AttachmentUrl?, AttachmentFileName? }` |
-| `UploadFileResponseDto.cs` | `{ Url, FileName }` — ответ на загрузку файла |
+| `ChatMessageDto.cs` | `{ Id, Text, SenderUserId, SenderUsername, ProjectId?, GroupChatId?, ToUserId?, AttachmentUrl?, AttachmentFileId?, AttachmentFileName?, AttachmentSize?, SentAt, IsMine }`. `Text` — уже расшифрованный открытый текст. |
+| `ChatSummaryDto.cs` | Сводка диалога для списка чатов: `{ ChatType (Direct/Project/Group), Title, LastMessageText, LastMessageAt, UnreadCount, ChatKey }` |
+| `SendChatMessageDto.cs` | `{ ProjectId?, GroupChatId?, ToUserId?, Text, AttachmentFileId?, AttachmentFileName?, AttachmentSize? }` |
+| `GroupChatDto.cs` | `{ Id, Name, CreatedByUserId, MemberCount, Members[] }` |
+| `UploadFileResponseDto.cs` | `{ FileId, FileName, Url, Size }` — ответ на загрузку файла |
 
 #### Users/
 | DTO | Назначение |
@@ -571,7 +583,7 @@ ASP.NET Core 8 Web API. Принимает HTTP-запросы от WPF-клие
 
 ## 9. ConSecOrg.Client — WPF-клиент
 
-Десктопное приложение на WPF (.NET 8-windows). Архитектурный паттерн — **MVVM** через CommunityToolkit.Mvvm. Material Design Themes (Material Design 2.x) для визуального стиля.
+Десктопное приложение на WPF (.NET 10-windows). Архитектурный паттерн — **MVVM** через CommunityToolkit.Mvvm. Material Design Themes (Material Design 2.x) для визуального стиля.
 
 ### 9.1 App.xaml / App.xaml.cs
 
@@ -627,7 +639,7 @@ ASP.NET Core 8 Web API. Принимает HTTP-запросы от WPF-клие
 | `IAuditApiService.cs` | Интерфейс: GetLogs (с фильтрами), VerifyChain, ExportCsv |
 | `IDashboardApiService.cs` | Интерфейс: GetSecurityDashboard |
 | `ISharedProjectsApiService.cs` | Интерфейс: GetAll, Create, Join, Leave, Delete, GetMembers, GetTasks, GetColumns, CreateTask, UpdateTask, DeleteTask, CreateColumn, UpdateColumn, DeleteColumn |
-| `IChatApiService.cs` | Интерфейс: SendMessage, GetProjectMessages, GetDirectMessages, GetChats, UploadFile |
+| `IChatApiService.cs` | Интерфейс: `SendMessage`, `GetProjectMessages`, `GetDirectMessages`, `GetGroupMessages`, `GetChats`, `UploadFile`, `DownloadFile`, `DeleteChatMessageAsync`, `CreateGroupChat`, `GetGroupChats`, `AddGroupMember`, `RemoveGroupMember`, `DeleteGroupChat` |
 
 #### Local/ — локальный режим (Personal)
 
@@ -649,8 +661,8 @@ ASP.NET Core 8 Web API. Принимает HTTP-запросы от WPF-клие
 | `NavigationService.cs` | Stack-based навигация для внутренних страниц Shell. `NavigateTo<T>()`, `GoBack()`. Используется для переходов между Notes, Tasks, Calendar и т.д. |
 | `NotificationService.cs` | Event-based уведомления. События: `ShowToast(message, level)`, `NoteExpiringSoon(title, minutes)`, `NoteDestroyedByTimer(title)`. Поднимает `ShowToastRequested` → `MainWindow` показывает Toast. |
 | `DestructionTimerService.cs` | `BackgroundService`. `PeriodicTimer` каждые 60 секунд. Загружает заметки с `ExpiresAt ≤ UtcNow + 30 мин`. Уведомляет за 30 мин и 5 мин. При `ExpiresAt ≤ UtcNow` — вызывает `SecureDeleteAsync` и поднимает `NoteTimerExpired` событие. `HashSet<Guid> _alreadyProcessed` — каждая заметка обрабатывается ровно один раз. |
-| `BoardHubClient.cs` | SignalR клиент для `/hubs/board`. `EnsureConnectedAsync()` — ленивое подключение с автореконнектом. `JoinBoard/LeaveBoard` — подписка на события доски. `NotifyTaskMovedAsync` — сигнализирует о перемещении задачи. Событие `TaskMoved` → `KanbanBoardViewModel` обновляет доску. |
-| `SharedProjectsHubClient.cs` | SignalR клиент для `/hubs/projects`. Событие `ChatMessageReceived` → `SharedChatPanelViewModel` добавляет входящее сообщение. |
+| `BoardHubClient.cs` | SignalR клиент для `/hubs/board` (задачи Kanban). `EnsureConnectedAsync()` — ленивое подключение с автореконнектом. `JoinBoard(boardId)` / `LeaveBoard(boardId)` — подписка. `NotifyTaskMovedAsync` — сигнализирует о перемещении задачи. Событие `TaskMoved` → `KanbanBoardViewModel` перезагружает доску. |
+| `SharedProjectsHubClient.cs` | Единый SignalR клиент для `/hubs/board` (совместные проекты и чаты). События задач: `SharedTaskCreated/Updated/Deleted/Moved`; события колонок: `SharedColumnCreated/Updated/Deleted/Reordered`; события чата: `ChatMessageReceived`, `MessagesRead`, **`MessageDeleted`** (Guid messageId) — удаляет сообщение из UI через `Dispatcher.BeginInvoke`. Методы: `EnsureConnectedAsync`, `SubscribeAsync(projectId)`, `JoinGroupChatAsync(groupChatId)`, `LeaveGroupChatAsync`, `NotifyDirectReadAsync`. |
 | `ProjectService.cs` | Управляет пользовательскими проектами/досками (Kanban). Хранит конфигурацию в `%AppData%\ConSecOrg\{userId}\projects.json`. Содержит `ObservableCollection<BoardItem>` — доски в сайдбаре. `TaskProjectMapping` — привязка task_id к projectId+boardId. Методы: `CreateProject`, `DeleteProject`, `AddBoard`, `DeleteBoard`, `SetColumnColor`, `LoadForUser`. |
 | `NoteMetaService.cs` | Хранит дополнительные метаданные заметок (теги, дата) в `note_meta.json`. Расширяет NoteDto без изменения схемы БД. |
 | `TaskMetaService.cs` | Хранит метаданные задач в `task_meta.json`: теги, описание, `IsCompleted`, подзадачи (`SubTaskItem[]`), `AssigneeUserId`. Методы: `GetTags`, `SetTags`, `GetIsCompleted`, `SetIsCompleted`, `GetSubTasks`, `AddSubTask`, `ToggleSubTask`, `GetAssignee`, `SetAssignee`. |
@@ -754,6 +766,12 @@ ASP.NET Core 8 Web API. Принимает HTTP-запросы от WPF-клие
 | `SharedChatPanelViewModel.cs` | Боковая панель чата (проектный + личный). `OpenProject(projectId)` / `OpenDirect(otherUserId)` / `OpenChatList()`. Emoji picker (96 эмодзи). Прикрепление файлов (до 20 МБ). `ResolveAttachmentUrl()` — дополняет относительный URL сервером из `ModeService.ServerUrl`. Подписан на `SharedProjectsHubClient.ChatMessageReceived`. |
 | `SharedTaskEditViewModel.cs` | Форма создания/редактирования задачи совместного проекта. Для Admin/Manager — выбор исполнителя из `ObservableCollection<SharedMemberInfo>`. Для User — автоназначение. |
 
+#### Chats/ (корпоративный режим)
+
+| Файл | Описание |
+|------|----------|
+| `ChatsViewModel.cs` | Полностраничный мессенджер. **Список диалогов**: все диалоги (личные, проектные, групповые) со сводкой последнего сообщения, временем, счётчиком непрочитанных. **Сообщения**: `_rawMessages` (ObservableCollection<ChatMsgVm>) → `ChatItems` (группировка по дате-разделителям). `ChatMsgVm` — вложенный класс со свойствами: `Id`, `Text`, `SenderName`, `IsMine`, `SentAt`, `HasAttachment`, `IsImageAttachment` (проверка расширения .png/.jpg/.gif/.webp), `IsNonImageAttachment`, `AttachmentUrl` (`{ServerUrl}/api/v1/files/{fileId}`). **Отправка**: текст + опциональный файл через `UploadFileAsync`. **Inline-превью**: изображения отображаются прямо в пузырьке (кликабельно для скачивания), остальные файлы — кнопка загрузки. **Удаление сообщений**: `DeleteMessageAsync(msg)` — `DELETE /api/v1/chat/messages/{id}` (только свои), SignalR событие `MessageDeleted` → `OnMessageDeleted(Guid)` → `Dispatcher.BeginInvoke(RemoveMessageLocally)`. **Контекстное меню**: правый клик на пузырьке — «Копировать текст» (всегда) + «Удалить» (только свои). **Создание группы**: `CreateGroupChatAsync`. **Реал-тайм**: подписка на `SharedProjectsHubClient.ChatMessageReceived` и `MessageDeleted`. Emoji picker (96 символов). |
+
 #### Dashboard/
 
 | Файл | Описание |
@@ -834,6 +852,11 @@ ASP.NET Core 8 Web API. Принимает HTTP-запросы от WPF-клие
 | `SharedProjectBoardView.xaml` | Kanban для совместного проекта. Аналогична `KanbanBoardView` но с поддержкой назначения исполнителей. Полноценная секция подзадач: рекурсивный `DataTemplate` `SharedCardSubTaskTemplate`, BindingProxy, expand/collapse, inline добавление. |
 | `SharedChatPanelView.xaml` | Боковая панель чата. Header с заголовком + кнопка назад/закрыть. Режим «Список чатов» — `ItemsControl` диалогов. Режим «Сообщения» — `ItemsControl` сообщений (аватар + bubble + изображение/файл). Input строка: кнопка emoji + прикрепить файл + TextBox + кнопка отправить. Popup с 96 emoji. |
 | `SharedTaskEditDialog.xaml` | Диалог задачи совместного проекта с выбором исполнителя. |
+
+#### Chats/ (корпоративный режим)
+| Файл | Описание |
+|------|----------|
+| `ChatsView.xaml` | Двухпанельный мессенджер. **Левая панель** (список чатов): `ItemsControl` диалогов — аватар (круг с первой буквой), название, последнее сообщение, время, бейдж непрочитанных. **Правая панель** (сообщения): `ItemsControl` с `ChatItems` — разделители дат и пузырьки сообщений. Пузырёк «своих» сообщений: `StackPanel[hover-кнопка удаления (красный TrashCanOutline) + Border с ContextMenu]`. ContextMenu через паттерн `Tag=ChatsViewModel` + `PlacementTarget.Tag.Command` (пересекает visual tree граница). Пункты: «Копировать текст» (всегда) и «Удалить» (красный, только свои). Inline-превью изображений (MaxWidth=320, клик=скачать); иначе — кнопка-загрузка с иконкой и именем файла. **Input строка**: кнопка emoji (ContextMenu с 96 символами) + кнопка прикрепить файл (FileDialog) + TextBox + кнопка отправить. Диалог «Создать группу» через `MaterialDesign.DialogHost`. |
 
 #### Dashboard/
 | Файл | Описание |
@@ -923,7 +946,10 @@ ASP.NET Core 8 Web API. Принимает HTTP-запросы от WPF-клие
 | `shared_project_members` | Участники: project_id, user_id, joined_at. |
 | `shared_project_columns` | Колонки Kanban: project_id, name, order, color. |
 | `shared_project_tasks` | Задачи проекта: title, description, status, priority, due_date, assigned_to_user_id, column_id. |
-| `chat_messages` | Сообщения: text, sender_user_id, project_id (nullable), to_user_id (nullable), attachment_url, attachment_name, sent_at. |
+| `chat_messages` | Сообщения: `sender_user_id`, `project_id?`, `group_chat_id?`, `to_user_id?`, `sent_at`. Шифрование: `text_cipher/text_nonce/text_hmac` (VARBINARY, ГОСТ). Вложения: `attachment_file_id`, `attachment_file_name`, `attachment_size`. |
+| `group_chats` | Групповые чаты: `name`, `created_by_user_id`, `created_at`. |
+| `group_chat_members` | Участники групп: `group_chat_id`, `user_id`, `joined_at`. |
+| `chat_last_reads` | Метки прочтения: `user_id`, `chat_key` (строка типа `"user:{id:N}"`), `last_read_at`. |
 
 ---
 
@@ -1082,16 +1108,41 @@ NotesServiceProxy → ApiClient → HTTP → ConSecOrg.Server → MediatR → In
 ### Чат `/api/v1/chat`
 | Метод | Путь | Описание |
 |-------|------|----------|
-| POST | `/messages` | Отправить сообщение |
+| POST | `/messages` | Отправить сообщение (шифруется ГОСТ при сохранении) |
 | GET | `/projects/{projectId}/messages` | История проектного чата |
 | GET | `/direct/{userId}/messages` | История личного чата |
-| GET | `/chats` | Список всех диалогов |
+| GET | `/group/{groupChatId}/messages` | История группового чата |
+| GET | `/chats` | Список всех диалогов со сводкой |
+| DELETE | `/messages/{id}` | Удалить своё сообщение + SignalR broadcast `MessageDeleted` |
 
-### SignalR хабы
-| Хаб | Адрес | События |
-|-----|-------|---------|
-| BoardHub | `/hubs/board` | JoinBoard, LeaveBoard, TaskMoved, NotifyTaskMoved |
-| SharedProjectsHub | `/hubs/projects` | ChatMessageReceived |
+### Групповые чаты `/api/v1/group-chats`
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET/POST | `/` | Список / Создать |
+| GET | `/{id}` | Информация о группе |
+| GET/DELETE | `/{id}/members` | Участники / Удалить |
+| POST | `/{id}/members` | Добавить участника |
+| DELETE | `/{id}` | Удалить группу |
+
+### Файлы `/api/v1/files`
+| Метод | Путь | Описание |
+|-------|------|----------|
+| POST | `/upload` | Загрузить файл (до 50 МБ), возвращает `{ FileId, FileName, Url, Size }` |
+| GET | `/{fileId}` | Скачать файл |
+
+### SignalR (`/hubs/board`)
+| Событие | Направление | Описание |
+|---------|-------------|----------|
+| `JoinProject(projectId)` | Клиент → Сервер | Подписка на события Kanban-проекта |
+| `LeaveProject(projectId)` | Клиент → Сервер | Отписка |
+| `JoinGroupChat(groupChatId)` | Клиент → Сервер | Подписка на групповой чат |
+| `LeaveGroupChat(groupChatId)` | Клиент → Сервер | Отписка |
+| `MarkDirectRead(partnerId)` | Клиент → Сервер | Уведомить партнёра о прочтении |
+| `ChatMessageReceived` | Сервер → Клиент | Новое сообщение |
+| `MessagesRead` | Сервер → Клиент | Партнёр прочитал сообщения |
+| `MessageDeleted` | Сервер → Клиент | Сообщение удалено (Guid messageId) |
+| `SharedTaskCreated/Updated/Deleted/Moved` | Сервер → Клиент | Изменения задачи |
+| `SharedColumnCreated/Updated/Deleted/Reordered` | Сервер → Клиент | Изменения колонки |
 
 ---
 
@@ -1113,6 +1164,7 @@ ShellView содержит:
 ├── KanbanBoardView                  (Tasks)
 ├── CalendarView                     (Calendar)
 ├── ContactsView                     (Contacts)
+├── ChatsView                        (Chats, корп.)
 ├── CompanyView / SharedProjectBoardView  (Company, корп.)
 ├── SecurityDashboardView            (Dashboard, Admin/Auditor)
 ├── AuditLogView                     (Audit, Admin/Auditor)
@@ -1168,29 +1220,29 @@ ShellView содержит:
 - `Microsoft.Extensions.Logging.Abstractions` — логирование
 
 ### ConSecOrg.Infrastructure
-- `Microsoft.EntityFrameworkCore.SqlServer 8.x` — ORM
-- `Microsoft.EntityFrameworkCore.Tools 8.x` — EF CLI
+- `Microsoft.EntityFrameworkCore.SqlServer 10.x` — ORM
+- `Microsoft.EntityFrameworkCore.Tools 10.x` — EF CLI
 - `BouncyCastle.Cryptography 2.x` — ГОСТ криптография
 - `Serilog 3.x` + `Serilog.Sinks.MSSqlServer` — логирование
-- `System.IdentityModel.Tokens.Jwt 7.x` + `Microsoft.IdentityModel.Tokens` — JWT
+- `System.IdentityModel.Tokens.Jwt 8.x` + `Microsoft.IdentityModel.Tokens` — JWT
 
 ### ConSecOrg.Server
-- `Microsoft.AspNetCore.Authentication.JwtBearer 8.x` — JWT Auth
-- `Serilog.AspNetCore 8.x` — структурированное логирование запросов
-- `Microsoft.AspNetCore.SignalR 8.x` — real-time
-- `Microsoft.AspNetCore.RateLimiting 8.x` — ограничение частоты
+- `Microsoft.AspNetCore.Authentication.JwtBearer 10.x` — JWT Auth
+- `Serilog.AspNetCore 10.x` — структурированное логирование запросов
+- `Microsoft.AspNetCore.SignalR 1.x` (встроен в ASP.NET Core 10) — real-time
+- `Swashbuckle.AspNetCore 10.x` — Swagger UI
 
 ### ConSecOrg.Client
 - `CommunityToolkit.Mvvm 8.x` — MVVM фреймворк
-- `MaterialDesignThemes 5.x` + `MaterialDesignColors 3.x` — UI kit
-- `MahApps.Metro 2.x` + `MahApps.Metro.IconPacks 5.x` — иконки и контролы
-- `Microsoft.Extensions.Hosting 8.x` — DI контейнер
-- `Markdig 0.37` — парсер Markdown
+- `MaterialDesignThemes 5.x` — UI kit
+- `MahApps.Metro 2.x` + `MahApps.Metro.IconPacks 6.x` — иконки и контролы
+- `Microsoft.Extensions.Hosting 10.x` — DI контейнер
+- `Markdig 1.x` — парсер Markdown
 - `MdXaml 1.x` — Markdown → FlowDocument (WPF)
-- `RestSharp 110.x` — HTTP клиент
-- `Microsoft.AspNetCore.SignalR.Client 8.x` — SignalR клиент
+- `RestSharp 114.x` — HTTP клиент
+- `Microsoft.AspNetCore.SignalR.Client 10.x` — SignalR клиент
 - `H.NotifyIcon.Wpf 2.x` — иконка в системном трее
-- `Microsoft.EntityFrameworkCore.SqlServer 8.x` — для PersonalDbContext
+- `Microsoft.EntityFrameworkCore.SqlServer 10.x` — для PersonalDbContext
 
 ### Тестовые проекты
 - `xUnit 2.x` + `xUnit.runner.visualstudio`
@@ -1271,4 +1323,30 @@ dotnet test tests\ConSecOrg.Infrastructure.Tests  # только ГОСТ тес
 
 ---
 
-*Документация актуальна на 2026-05-08. Автор: Максутов Р.Ф.*
+---
+
+## 19. Иконки приложения
+
+Файлы исходных изображений: `ConSecOrg.png` (клиент) и `ConSecOrgServer.png` (сервер) — в корне проекта. Формат PNG с прозрачным фоном.
+
+### Генерация ICO
+
+Из каждого PNG генерируется многоразмерный ICO-файл (PowerShell + `System.Drawing`). ICO содержит 6 размеров: 16×16, 32×32, 48×48, 64×64, 128×128, 256×256 — PNG-блобы внутри ICO (современный формат Windows, полная поддержка прозрачности).
+
+| Исходник | ICO файл | Где используется |
+|----------|----------|-----------------|
+| `ConSecOrg.png` | `src/ConSecOrg.Client/Assets/Icons/app.ico` | `<ApplicationIcon>` в .csproj → иконка exe; `Icon="Assets/Icons/app.ico"` в MainWindow.xaml → заголовок окна + панель задач; `IconSource="/Assets/Icons/app.ico"` в `tb:TaskbarIcon` → системный трей |
+| `ConSecOrgServer.png` | `src/ConSecOrg.Server/Resources/server.ico` | `<ApplicationIcon>` в .csproj → иконка Server.exe; копируется в output (`CopyToOutputDirectory=PreserveNewest`) |
+
+### Публикация (self-contained single-file)
+
+```cmd
+dotnet publish src\ConSecOrg.Client -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true -o publish/Client
+dotnet publish src\ConSecOrg.Server -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true -o publish/Server
+```
+
+Результат: `publish/Client/ConSecOrg.Client.exe` (~264 МБ) и `publish/Server/ConSecOrg.Server.exe` (~122 МБ). Оба exe включают иконки, ассемблерные метаданные (Company, Version, Copyright) и весь .NET runtime — запускаются без предустановленного .NET.
+
+---
+
+*Документация актуальна на 2026-05-14. Автор: Максутов Р.Ф.*
