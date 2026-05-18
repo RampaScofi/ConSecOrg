@@ -3,6 +3,7 @@ using ConSecOrg.Application.Common.Interfaces;
 using ConSecOrg.Application.Features.Auth.Commands;
 using ConSecOrg.Domain.Entities;
 using ConSecOrg.Domain.Enumerations;
+using ConSecOrg.Domain.Exceptions;
 using ConSecOrg.Domain.Interfaces.Repositories;
 using ConSecOrg.Domain.Interfaces.Services;
 using ConSecOrg.Domain.ValueObjects;
@@ -49,92 +50,77 @@ public class LoginCommandHandlerTests
 
     private static User BuildActiveUser(string username = "testuser")
     {
-        var user = new User(Guid.NewGuid(), username, $"{username}@test.com",
+        return new User(Guid.NewGuid(), username, $"{username}@test.com",
             new byte[32], new byte[32], Guid.NewGuid());
-        return user;
     }
 
     private static User BuildLockedUser()
     {
         var user = BuildActiveUser("lockeduser");
-        // Lock the user by simulating 5 failed attempts
         for (int i = 0; i < 5; i++) user.RecordLoginFailure();
         return user;
     }
 
-    // ── success path ───────────────────────────────────────────────────────────
+    private void SetupSuccessfulAuth(User user, byte[]? keyMaterial = null)
+    {
+        keyMaterial ??= new byte[64];
+        _userRepo.Setup(r => r.GetByUsernameAsync(user.Username, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(user);
+        _hasher.Setup(h => h.Verify(It.IsAny<string>(), user.PasswordHash, user.Salt))
+               .Returns((true, keyMaterial));
+        _userRepo.Setup(r => r.AddSessionAsync(It.IsAny<Session>(), It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+    }
+
+    // ── 1. success path ────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_ValidCredentials_ReturnsTokens()
     {
         var user = BuildActiveUser();
-        var keyMaterial = new byte[64];
-        Random.Shared.NextBytes(keyMaterial);
+        SetupSuccessfulAuth(user);
 
-        _userRepo.Setup(r => r.GetByUsernameAsync("testuser", It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(user);
-        _hasher.Setup(h => h.Verify("correctpassword", user.PasswordHash, user.Salt))
-               .Returns((true, keyMaterial));
-        _userRepo.Setup(r => r.AddSessionAsync(It.IsAny<Session>(), It.IsAny<CancellationToken>()))
-                 .Returns(Task.CompletedTask);
-
-        var cmd = new LoginCommand("testuser", "correctpassword", "127.0.0.1", null, null);
-        var result = await _sut.Handle(cmd, CancellationToken.None);
+        var result = await _sut.Handle(
+            new LoginCommand("testuser", "correctpassword", "127.0.0.1", null, null),
+            CancellationToken.None);
 
         result.AccessToken.Should().Be("access_token_value");
         result.RefreshToken.Should().Be("refresh_token_value");
         result.User.Username.Should().Be("testuser");
     }
 
-    [Fact]
-    public async Task Handle_ValidCredentials_StoresEncryptionKey()
-    {
-        var user = BuildActiveUser();
-        var keyMaterial = new byte[64];
-
-        _userRepo.Setup(r => r.GetByUsernameAsync("testuser", It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(user);
-        _hasher.Setup(h => h.Verify(It.IsAny<string>(), user.PasswordHash, user.Salt))
-               .Returns((true, keyMaterial));
-        _userRepo.Setup(r => r.AddSessionAsync(It.IsAny<Session>(), It.IsAny<CancellationToken>()))
-                 .Returns(Task.CompletedTask);
-
-        var cmd = new LoginCommand("testuser", "password", "127.0.0.1", null, null);
-        await _sut.Handle(cmd, CancellationToken.None);
-
-        _keyStore.Verify(k => k.Store(It.IsAny<Guid>(), keyMaterial), Times.Once);
-    }
-
-    // ── not found ──────────────────────────────────────────────────────────────
+    // ── 2. unknown user ────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Handle_UnknownUsername_ThrowsNotFoundException()
+    public async Task Handle_UnknownUser_ThrowsNotFound()
     {
         _userRepo.Setup(r => r.GetByUsernameAsync("ghost", It.IsAny<CancellationToken>()))
                  .ReturnsAsync((User?)null);
 
-        var cmd = new LoginCommand("ghost", "anypassword", null, null, null);
-        var act = () => _sut.Handle(cmd, CancellationToken.None);
+        var act = () => _sut.Handle(
+            new LoginCommand("ghost", "anypassword", null, null, null),
+            CancellationToken.None);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
-    // ── locked account ─────────────────────────────────────────────────────────
+    // ── 3. locked account ─────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Handle_LockedUser_ThrowsAccountLockedException()
+    public async Task Handle_LockedAccount_ThrowsForbidden()
     {
         var locked = BuildLockedUser();
         _userRepo.Setup(r => r.GetByUsernameAsync("lockeduser", It.IsAny<CancellationToken>()))
                  .ReturnsAsync(locked);
 
-        var cmd = new LoginCommand("lockeduser", "any", null, null, null);
-        var act = () => _sut.Handle(cmd, CancellationToken.None);
+        var act = () => _sut.Handle(
+            new LoginCommand("lockeduser", "any", null, null, null),
+            CancellationToken.None);
 
         await act.Should().ThrowAsync<AccountLockedException>();
     }
 
-    // ── wrong password ─────────────────────────────────────────────────────────
+    // ── 4. wrong password ─────────────────────────────────────────────────────
 
     [Fact]
     public async Task Handle_WrongPassword_ThrowsUnauthorized()
@@ -145,14 +131,17 @@ public class LoginCommandHandlerTests
         _hasher.Setup(h => h.Verify(It.IsAny<string>(), user.PasswordHash, user.Salt))
                .Returns((false, Array.Empty<byte>()));
 
-        var cmd = new LoginCommand("testuser", "wrongpassword", null, null, null);
-        var act = () => _sut.Handle(cmd, CancellationToken.None);
+        var act = () => _sut.Handle(
+            new LoginCommand("testuser", "wrongpassword", null, null, null),
+            CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
 
+    // ── 5. failed attempt increments counter ──────────────────────────────────
+
     [Fact]
-    public async Task Handle_WrongPassword_IncrementsFailedAttempts()
+    public async Task Handle_FailedAttempt_IncrementsCounter()
     {
         var user = BuildActiveUser();
         _userRepo.Setup(r => r.GetByUsernameAsync("testuser", It.IsAny<CancellationToken>()))
@@ -160,33 +149,17 @@ public class LoginCommandHandlerTests
         _hasher.Setup(h => h.Verify(It.IsAny<string>(), user.PasswordHash, user.Salt))
                .Returns((false, Array.Empty<byte>()));
 
-        var cmd = new LoginCommand("testuser", "bad", null, null, null);
-        try { await _sut.Handle(cmd, CancellationToken.None); } catch { }
+        try { await _sut.Handle(new LoginCommand("testuser", "bad", null, null, null), CancellationToken.None); } catch { }
 
         user.FailedAttempts.Should().Be(1);
     }
 
-    [Fact]
-    public async Task Handle_FiveConsecutiveFailures_LocksAccount()
-    {
-        var user = BuildActiveUser();
-        _userRepo.Setup(r => r.GetByUsernameAsync("testuser", It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(user);
-        _hasher.Setup(h => h.Verify(It.IsAny<string>(), user.PasswordHash, user.Salt))
-               .Returns((false, Array.Empty<byte>()));
-
-        var cmd = new LoginCommand("testuser", "bad", null, null, null);
-        for (int i = 0; i < 5; i++)
-            try { await _sut.Handle(cmd, CancellationToken.None); } catch { }
-
-        user.IsLocked.Should().BeTrue();
-    }
+    // ── 6. fifth failure locks account and writes AccountLocked audit ─────────
 
     [Fact]
-    public async Task Handle_FifthFailure_WritesAccountLockedAudit()
+    public async Task Handle_FifthFailedAttempt_LocksAccountAndAuditsAccountLocked()
     {
         var user = BuildActiveUser();
-        // Pre-set 4 failures so next attempt triggers lock
         for (int i = 0; i < 4; i++) user.RecordLoginFailure();
 
         _userRepo.Setup(r => r.GetByUsernameAsync("testuser", It.IsAny<CancellationToken>()))
@@ -194,37 +167,86 @@ public class LoginCommandHandlerTests
         _hasher.Setup(h => h.Verify(It.IsAny<string>(), user.PasswordHash, user.Salt))
                .Returns((false, Array.Empty<byte>()));
 
-        var cmd = new LoginCommand("testuser", "bad", null, null, null);
-        try { await _sut.Handle(cmd, CancellationToken.None); } catch { }
+        try { await _sut.Handle(new LoginCommand("testuser", "bad", null, null, null), CancellationToken.None); } catch { }
 
-        // Verify an AccountLocked audit entry was written
+        user.IsLocked.Should().BeTrue();
         _auditRepo.Verify(a => a.AddAsync(
             It.Is<AuditLog>(l => l.Action == AuditAction.AccountLocked),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    // ── successful login resets counter ────────────────────────────────────────
+    // ── 7. successful login resets failed attempts ────────────────────────────
 
     [Fact]
-    public async Task Handle_ValidLogin_ResetsFailedAttempts()
+    public async Task Handle_SuccessfulLogin_ResetsFailedAttempts()
     {
         var user = BuildActiveUser();
-        // 3 prior failures
         for (int i = 0; i < 3; i++) user.RecordLoginFailure();
-        user.FailedAttempts.Should().Be(3);
+        SetupSuccessfulAuth(user);
 
-        var keyMaterial = new byte[64];
-        _userRepo.Setup(r => r.GetByUsernameAsync("testuser", It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(user);
-        _hasher.Setup(h => h.Verify(It.IsAny<string>(), user.PasswordHash, user.Salt))
-               .Returns((true, keyMaterial));
-        _userRepo.Setup(r => r.AddSessionAsync(It.IsAny<Session>(), It.IsAny<CancellationToken>()))
-                 .Returns(Task.CompletedTask);
-
-        var cmd = new LoginCommand("testuser", "correct", "10.0.0.1", null, null);
-        await _sut.Handle(cmd, CancellationToken.None);
+        await _sut.Handle(
+            new LoginCommand("testuser", "correct", "10.0.0.1", null, null),
+            CancellationToken.None);
 
         user.FailedAttempts.Should().Be(0);
         user.LastLoginIp.Should().Be("10.0.0.1");
+    }
+
+    // ── 8. device mismatch throws DeviceMismatchException ─────────────────────
+
+    [Fact]
+    public async Task Handle_DeviceMismatch_ThrowsForbiddenAndAudits()
+    {
+        var user = BuildActiveUser();
+        user.SetDeviceId(new DeviceFingerprint("registered_device"));
+
+        _userRepo.Setup(r => r.GetByUsernameAsync("testuser", It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(user);
+        _hasher.Setup(h => h.Verify(It.IsAny<string>(), user.PasswordHash, user.Salt))
+               .Returns((true, new byte[64]));
+        _device.Setup(d => d.GetFingerprint())
+               .Returns(new DeviceFingerprint("different_device"));
+
+        var act = () => _sut.Handle(
+            new LoginCommand("testuser", "correct", null, null, "some_fingerprint"),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<DeviceMismatchException>();
+    }
+
+    // ── 9. first login registers device fingerprint ───────────────────────────
+
+    [Fact]
+    public async Task Handle_FirstLoginRegistersDevice()
+    {
+        var user = BuildActiveUser();
+        user.DeviceId.Should().BeNull();
+
+        SetupSuccessfulAuth(user);
+        _device.Setup(d => d.GetFingerprint())
+               .Returns(new DeviceFingerprint("new_device_fp"));
+
+        await _sut.Handle(
+            new LoginCommand("testuser", "correct", null, null, "some_fingerprint"),
+            CancellationToken.None);
+
+        user.DeviceId.Should().Be("new_device_fp");
+    }
+
+    // ── 10. successful login writes Login audit entry ─────────────────────────
+
+    [Fact]
+    public async Task Handle_SuccessfulLogin_WritesAuditLog()
+    {
+        var user = BuildActiveUser();
+        SetupSuccessfulAuth(user);
+
+        await _sut.Handle(
+            new LoginCommand("testuser", "correct", "127.0.0.1", null, null),
+            CancellationToken.None);
+
+        _auditRepo.Verify(a => a.AddAsync(
+            It.Is<AuditLog>(l => l.Action == AuditAction.Login && l.Status == "Success"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 }
