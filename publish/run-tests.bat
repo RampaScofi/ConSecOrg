@@ -1,34 +1,34 @@
 @echo off
 chcp 65001 > nul
-title ConSecOrg — Тесты
+title ConSecOrg - Testy
 
 echo.
-echo  ╔══════════════════════════════════════════╗
-echo  ║       ConSecOrg — Запуск тестов          ║
-echo  ╚══════════════════════════════════════════╝
+echo  ==========================================
+echo   ConSecOrg -- Zapusk testov
+echo  ==========================================
 echo.
-echo  Требуется: .NET Runtime (dotnet.exe в PATH)
+echo  Trebuetsya: .NET Runtime (dotnet.exe v PATH)
 echo.
 
 set TESTS_DIR=%~dp0Tests
 
-:: ── ConSecOrg.Infrastructure.Tests ───────────────────────────────────────────
 echo  [1/1] ConSecOrg.Infrastructure.Tests
-echo  ─────────────────────────────────────────────────────────────────
+echo  ------------------------------------------
+echo.
+
 dotnet vstest "%TESTS_DIR%\ConSecOrg.Infrastructure.Tests.dll" --logger:"console;verbosity=normal"
 
 if %ERRORLEVEL% EQU 0 (
-    set RESULT=ПРОШЛИ УСПЕШНО
-    set EXITCODE=0
+    echo.
+    echo  ==========================================
+    echo   REZULTAT: VSE TESTY PROSHLI USPESHNO
+    echo  ==========================================
 ) else (
-    set RESULT=ЕСТЬ ОШИБКИ
-    set EXITCODE=1
+    echo.
+    echo  ==========================================
+    echo   REZULTAT: EST OSHIBKI - smotrите vыshe
+    echo  ==========================================
 )
 
 echo.
-echo  ═════════════════════════════════════════════════════════════════
-echo  Результат: %RESULT%
-echo  ═════════════════════════════════════════════════════════════════
-echo.
 pause
-exit /b %EXITCODE%
