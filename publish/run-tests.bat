@@ -1,34 +1,29 @@
 @echo off
-chcp 65001 > nul
-title ConSecOrg - Testy
+title ConSecOrg Tests
 
 echo.
-echo  ==========================================
-echo   ConSecOrg -- Zapusk testov
-echo  ==========================================
-echo.
-echo  Trebuetsya: .NET Runtime (dotnet.exe v PATH)
+echo ==========================================
+echo  ConSecOrg - Infrastructure Tests
+echo ==========================================
 echo.
 
-set TESTS_DIR=%~dp0Tests
+dotnet vstest "%~dp0Tests\ConSecOrg.Infrastructure.Tests.dll" --logger:"console;verbosity=normal"
 
-echo  [1/1] ConSecOrg.Infrastructure.Tests
-echo  ------------------------------------------
+if %ERRORLEVEL% EQU 0 goto PASSED
+
 echo.
-
-dotnet vstest "%TESTS_DIR%\ConSecOrg.Infrastructure.Tests.dll" --logger:"console;verbosity=normal"
-
-if %ERRORLEVEL% EQU 0 (
-    echo.
-    echo  ==========================================
-    echo   REZULTAT: VSE TESTY PROSHLI USPESHNO
-    echo  ==========================================
-) else (
-    echo.
-    echo  ==========================================
-    echo   REZULTAT: EST OSHIBKI - smotrите vыshe
-    echo  ==========================================
-)
-
+echo ==========================================
+echo  RESULT: SOME TESTS FAILED - see above
+echo ==========================================
 echo.
 pause
+exit /b 1
+
+:PASSED
+echo.
+echo ==========================================
+echo  RESULT: ALL TESTS PASSED
+echo ==========================================
+echo.
+pause
+exit /b 0
