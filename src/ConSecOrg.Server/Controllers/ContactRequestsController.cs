@@ -23,13 +23,14 @@ public class ContactRequestsController(AppDbContext db, ICryptoService crypto) :
 
     private async Task WriteAuditAsync(Guid userId, AuditAction action, string entityId, string details, CancellationToken ct)
     {
-        var prev = await db.AuditLogs.OrderByDescending(l => l.SequenceNum).FirstOrDefaultAsync(ct);
+        var prev = await db.AuditLogs.OrderByDescending(l => l.Timestamp).FirstOrDefaultAsync(ct);
         var prevHash = prev?.CurrentHash ?? new byte[32];
         var ts = DateTime.UtcNow;
+        var tsMs = new DateTime(ts.Year, ts.Month, ts.Day, ts.Hour, ts.Minute, ts.Second, ts.Millisecond, DateTimeKind.Utc);
         byte[] input =
         [
             .. prevHash,
-            .. System.Text.Encoding.UTF8.GetBytes(ts.ToString("O")),
+            .. System.Text.Encoding.UTF8.GetBytes(tsMs.ToString("O")),
             .. System.Text.Encoding.UTF8.GetBytes(action.ToString()),
             .. System.Text.Encoding.UTF8.GetBytes(entityId),
             .. System.Text.Encoding.UTF8.GetBytes(userId.ToString()),

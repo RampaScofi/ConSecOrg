@@ -13,14 +13,10 @@ public sealed class HashChainService : IHashChainService
     public HashChainEntry ComputeEntry(byte[]? previousHash, AuditLog currentData)
     {
         var prev = previousHash ?? HashChainEntry.GenesisHash;
-
-        // Hash = Streebog-256(previousHash || timestamp || action || entityId || userId)
-        // SpecifyKind ensures ToString("O") always appends "Z", matching DateTime.UtcNow
-        // used at write time (EF Core reads DateTime back as Kind=Unspecified from SQL Server).
         var parts = new[]
         {
             prev,
-            Encoding.UTF8.GetBytes(DateTime.SpecifyKind(currentData.Timestamp, DateTimeKind.Utc).ToString("O")),
+            TimestampBytes(currentData.Timestamp),
             Encoding.UTF8.GetBytes(currentData.Action.ToString()),
             Encoding.UTF8.GetBytes(currentData.EntityId ?? ""),
             Encoding.UTF8.GetBytes(currentData.UserId?.ToString() ?? "")
@@ -34,16 +30,15 @@ public sealed class HashChainService : IHashChainService
 
     public (bool Ok, long? TamperedAt) VerifyChain(IEnumerable<AuditLog> logs)
     {
-        var ordered = logs.OrderBy(l => l.SequenceNum).ToList();
+        var ordered = logs.OrderBy(l => l.Timestamp).ToList();
         byte[] expectedPrev = HashChainEntry.GenesisHash;
 
         foreach (var log in ordered)
         {
-            // Recompute the current hash
             var parts = new[]
             {
                 expectedPrev,
-                Encoding.UTF8.GetBytes(DateTime.SpecifyKind(log.Timestamp, DateTimeKind.Utc).ToString("O")),
+                TimestampBytes(log.Timestamp),
                 Encoding.UTF8.GetBytes(log.Action.ToString()),
                 Encoding.UTF8.GetBytes(log.EntityId ?? ""),
                 Encoding.UTF8.GetBytes(log.UserId?.ToString() ?? "")
@@ -62,5 +57,14 @@ public sealed class HashChainService : IHashChainService
         }
 
         return (true, null);
+    }
+
+    // Truncate to milliseconds before encoding: datetime2 round-trip can lose sub-ms ticks,
+    // so both write (AuditHelper) and verify must use the same precision ceiling.
+    private static byte[] TimestampBytes(DateTime dt)
+    {
+        var utc = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+        var ms = new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute, utc.Second, utc.Millisecond, DateTimeKind.Utc);
+        return Encoding.UTF8.GetBytes(ms.ToString("O"));
     }
 }

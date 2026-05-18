@@ -101,7 +101,10 @@ public class AuthController(ISender sender) : ControllerBase
     [Authorize]
     public async Task<ActionResult<UserInfoDto>> Me(CancellationToken ct)
     {
-        var userId = Guid.Parse(User.FindFirst("sub")!.Value);
+        var userId = Guid.Parse(
+            User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value
+            ?? throw new UnauthorizedAccessException("User ID claim missing."));
         var result = await sender.Send(new GetCurrentUserQuery(userId), ct);
         return Ok(result);
     }

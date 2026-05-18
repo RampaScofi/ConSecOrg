@@ -57,10 +57,32 @@ public sealed class UserRepository : IUserRepository
             .ToListAsync(ct);
 
     public async Task DeleteSessionAsync(Guid sessionId, CancellationToken ct = default)
-        => await _db.Sessions.Where(s => s.Id == sessionId).ExecuteDeleteAsync(ct);
+    {
+        if (!(_db.Database.ProviderName?.Contains("InMemory") == true))
+        {
+            await _db.Sessions.Where(s => s.Id == sessionId).ExecuteDeleteAsync(ct);
+        }
+        else
+        {
+            var session = await _db.Sessions.FindAsync([sessionId], ct);
+            if (session is not null) _db.Sessions.Remove(session);
+        }
+    }
 
     public async Task DeleteAllSessionsExceptAsync(Guid userId, Guid keepSessionId, CancellationToken ct = default)
-        => await _db.Sessions
-            .Where(s => s.UserId == userId && s.Id != keepSessionId)
-            .ExecuteDeleteAsync(ct);
+    {
+        if (!(_db.Database.ProviderName?.Contains("InMemory") == true))
+        {
+            await _db.Sessions
+                .Where(s => s.UserId == userId && s.Id != keepSessionId)
+                .ExecuteDeleteAsync(ct);
+        }
+        else
+        {
+            var toRemove = await _db.Sessions
+                .Where(s => s.UserId == userId && s.Id != keepSessionId)
+                .ToListAsync(ct);
+            _db.Sessions.RemoveRange(toRemove);
+        }
+    }
 }

@@ -36,7 +36,10 @@ public static class AuditHelper
 
     private static byte[] BuildInput(byte[] prevHash, DateTime ts, string action, string entityId, string userId)
     {
-        var tsBytes = System.Text.Encoding.UTF8.GetBytes(ts.ToString("O"));
+        // Truncate to milliseconds: datetime2 SQL Server round-trip can lose sub-ms ticks,
+        // so hash input must use the same precision that survives the DB read-back.
+        var tsMs = new DateTime(ts.Year, ts.Month, ts.Day, ts.Hour, ts.Minute, ts.Second, ts.Millisecond, DateTimeKind.Utc);
+        var tsBytes = System.Text.Encoding.UTF8.GetBytes(tsMs.ToString("O"));
         var actionBytes = System.Text.Encoding.UTF8.GetBytes(action);
         var entityBytes = System.Text.Encoding.UTF8.GetBytes(entityId);
         var userBytes = System.Text.Encoding.UTF8.GetBytes(userId);

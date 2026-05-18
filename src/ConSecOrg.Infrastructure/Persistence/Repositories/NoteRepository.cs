@@ -38,12 +38,22 @@ public sealed class NoteRepository : INoteRepository
 
     public async Task SecureDeleteAsync(Guid id, CancellationToken ct = default)
     {
-        // Overwrite encrypted fields with random data before deletion
-        await _db.Database.ExecuteSqlRawAsync(
-            "UPDATE notes SET content_encrypted = CRYPT_GEN_RANDOM(CAST(DATALENGTH(content_encrypted) AS INT)), " +
-            "content_nonce = CRYPT_GEN_RANDOM(16), content_hmac = CRYPT_GEN_RANDOM(32) " +
-            "WHERE Id = {0}", [id], ct);
+        // InMemory provider (used in integration tests) doesn't support raw SQL or bulk deletes.
+        var isRelational = !(_db.Database.ProviderName?.Contains("InMemory") == true);
 
-        await _db.Notes.Where(n => n.Id == id).ExecuteDeleteAsync(ct);
+        if (isRelational)
+        {
+            // Overwrite encrypted fields with random data before deletion (SQL Server only)
+            await _db.Database.ExecuteSqlRawAsync(
+                "UPDATE notes SET content_encrypted = CRYPT_GEN_RANDOM(CAST(DATALENGTH(content_encrypted) AS INT)), " +
+                "content_nonce = CRYPT_GEN_RANDOM(16), content_hmac = CRYPT_GEN_RANDOM(32) " +
+                "WHERE Id = {0}", [id], ct);
+            await _db.Notes.Where(n => n.Id == id).ExecuteDeleteAsync(ct);
+        }
+        else
+        {
+            var note = await _db.Notes.FindAsync([id], ct);
+            if (note is not null) _db.Notes.Remove(note);
+        }
     }
 }
