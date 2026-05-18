@@ -15,10 +15,12 @@ public sealed class HashChainService : IHashChainService
         var prev = previousHash ?? HashChainEntry.GenesisHash;
 
         // Hash = Streebog-256(previousHash || timestamp || action || entityId || userId)
+        // SpecifyKind ensures ToString("O") always appends "Z", matching DateTime.UtcNow
+        // used at write time (EF Core reads DateTime back as Kind=Unspecified from SQL Server).
         var parts = new[]
         {
             prev,
-            Encoding.UTF8.GetBytes(currentData.Timestamp.ToString("O")),
+            Encoding.UTF8.GetBytes(DateTime.SpecifyKind(currentData.Timestamp, DateTimeKind.Utc).ToString("O")),
             Encoding.UTF8.GetBytes(currentData.Action.ToString()),
             Encoding.UTF8.GetBytes(currentData.EntityId ?? ""),
             Encoding.UTF8.GetBytes(currentData.UserId?.ToString() ?? "")
@@ -41,7 +43,7 @@ public sealed class HashChainService : IHashChainService
             var parts = new[]
             {
                 expectedPrev,
-                Encoding.UTF8.GetBytes(log.Timestamp.ToString("O")),
+                Encoding.UTF8.GetBytes(DateTime.SpecifyKind(log.Timestamp, DateTimeKind.Utc).ToString("O")),
                 Encoding.UTF8.GetBytes(log.Action.ToString()),
                 Encoding.UTF8.GetBytes(log.EntityId ?? ""),
                 Encoding.UTF8.GetBytes(log.UserId?.ToString() ?? "")

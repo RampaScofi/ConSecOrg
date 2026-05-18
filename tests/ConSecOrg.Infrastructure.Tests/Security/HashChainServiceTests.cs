@@ -17,7 +17,7 @@ public class HashChainServiceTests
         var entry = chain ?? new HashChainEntry(HashChainEntry.GenesisHash, new byte[32]);
         var log = new AuditLog(
             Guid.NewGuid(), userId, action, "TestEntity",
-            entityId, "Success", "127.0.0.1", entry);
+            entityId, "Success", "127.0.0.1", entry, DateTime.UtcNow);
         // Set sequence number via reflection (EF identity column in prod)
         typeof(AuditLog).GetProperty(nameof(AuditLog.SequenceNum))!
             .SetValue(log, seqNum);
