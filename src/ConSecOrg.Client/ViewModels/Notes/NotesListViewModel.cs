@@ -216,8 +216,12 @@ public partial class NotesListViewModel : BasePageViewModel
         await ExecuteAsync(async () =>
         {
             await notesService.DeleteNoteAsync(note.Id);
-            Notes.Remove(note);
+            _allNotes = _allNotes.Where(n => n.Id != note.Id).ToList();
+            ApplySortAndFilter();
             notifications.Success("Удалено", $"Заметка «{note.Title}» надёжно уничтожена.");
         });
+
+        if (ErrorMessage is not null)
+            notifications.Error("Ошибка удаления", ErrorMessage);
     }
 }

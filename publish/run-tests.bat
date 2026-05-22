@@ -5,7 +5,7 @@ set TESTS=%~dp0Tests
 
 echo.
 echo ==========================================
-echo  ConSecOrg - Running all tests (41 total)
+echo  ConSecOrg - Running all tests (64 total)
 echo ==========================================
 echo.
 
@@ -24,7 +24,7 @@ exit /b 1
 :ALLPASSED
 echo.
 echo ==========================================
-echo  RESULT: ALL 41 TESTS PASSED
+echo  RESULT: ALL 64 TESTS PASSED
 echo ==========================================
 echo.
 pause
