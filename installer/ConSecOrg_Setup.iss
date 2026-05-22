@@ -29,9 +29,7 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 
 ; Иконки и брендинг
-SetupIconFile=ConSecOrg_Icon.ico
-WizardImageFile=ConSecOrg_WizardBanner.bmp
-WizardSmallImageFile=ConSecOrg_WizardSmall.bmp
+; SetupIconFile=ConSecOrg_Icon.ico        ; раскомментировать если добавить иконку
 WizardStyle=modern
 
 ; Куда сохранять installer.exe
@@ -107,7 +105,7 @@ Source: "{#MySourceDir}\Server\*"; DestDir: "{app}\Server"; \
     Flags: ignoreversion recursesubdirs createallsubdirs; Components: server
 
 ; ── Вспомогательные файлы ──────────────────────────────────────────────────────
-Source: "{#MySourceDir}\ИНСТРУКЦИЯ.txt"; DestDir: "{app}"; Flags: ignoreversion isreadme
+Source: "{#MySourceDir}\README.txt"; DestDir: "{app}"; Flags: ignoreversion isreadme skipifsourcedoesntexist
 
 [Icons]
 ; ── Меню Пуск ──────────────────────────────────────────────────────────────────
@@ -121,9 +119,9 @@ Name: "{group}\ConSecOrg Сервер"; \
     IconFilename: "{app}\Server\{#MyAppServerExe}"; \
     Components: server; Tasks: startmenu
 
-Name: "{group}\Инструкция по установке"; \
-    Filename: "{app}\ИНСТРУКЦИЯ.txt"; \
-    Tasks: startmenu
+Name: "{group}\README"; \
+    Filename: "{app}\README.txt"; \
+    Tasks: startmenu; Check: FileExists(ExpandConstant('{app}\README.txt'))
 
 Name: "{group}\Удалить ConSecOrg"; \
     Filename: "{uninstallexe}"; \

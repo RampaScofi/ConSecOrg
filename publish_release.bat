@@ -1,47 +1,43 @@
 @echo off
-chcp 65001 > nul
 echo ==========================================
-echo  ConSecOrg — Публикация Release сборок
+echo  ConSecOrg - Publish Release Builds
 echo ==========================================
 echo.
 
 cd /d "%~dp0"
 
-:: Публикация клиента
-echo [1/3] Публикация клиента (WPF)...
+echo [1/3] Publishing Client (WPF)...
 dotnet publish src\ConSecOrg.Client -c Release -r win-x64 --self-contained false -o publish\Client
 if %errorlevel% neq 0 (
-    echo [ОШИБКА] Публикация клиента завершилась с ошибкой
+    echo [ERROR] Client publish failed
     pause
     exit /b 1
 )
-echo    Клиент опубликован в publish\Client\
+echo    Done: publish\Client\
 echo.
 
-:: Публикация сервера
-echo [2/3] Публикация сервера (ASP.NET Core)...
+echo [2/3] Publishing Server (ASP.NET Core)...
 dotnet publish src\ConSecOrg.Server -c Release -r win-x64 --self-contained false -o publish\Server
 if %errorlevel% neq 0 (
-    echo [ОШИБКА] Публикация сервера завершилась с ошибкой
+    echo [ERROR] Server publish failed
     pause
     exit /b 1
 )
-echo    Сервер опубликован в publish\Server\
+echo    Done: publish\Server\
 echo.
 
-:: Копируем инструкцию если есть
-echo [3/3] Копирование вспомогательных файлов...
-if exist "ИНСТРУКЦИЯ.txt" (
-    copy "ИНСТРУКЦИЯ.txt" "publish\ИНСТРУКЦИЯ.txt" > nul
-    echo    Инструкция скопирована
+echo [3/3] Copying auxiliary files...
+if exist "INSTRUKTSIYA.txt" (
+    copy "INSTRUKTSIYA.txt" "publish\INSTRUKTSIYA.txt" > nul
+    echo    Copied.
 ) else (
-    echo    ИНСТРУКЦИЯ.txt не найдена — создайте файл или установщик выдаст предупреждение
+    echo    INSTRUKTSIYA.txt not found - skipped
 )
 echo.
 
 echo ==========================================
-echo  Публикация завершена!
-echo  Теперь запустите: installer\build_installer.bat
+echo  Publish complete!
+echo  Next step: run installer\build_installer.bat
 echo ==========================================
 echo.
 pause
