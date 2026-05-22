@@ -214,10 +214,10 @@
                                                FontSize="13" FontWeight="Bold"
                                                Foreground="{DynamicResource AccentBrush}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               Visibility="{Binding AvatarBase64, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                               Visibility="{Binding AvatarBase64, Converter={StaticResource NullToCollapsedConverter}}"/>
                                     <Image Source="{Binding AvatarBase64, Converter={StaticResource Base64ToImageConverter}}"
                                            Stretch="UniformToFill"
-                                           Visibility="{Binding AvatarBase64, Converter={StaticResource NotNullToVisibilityConverter}}"/>
+                                           Visibility="{Binding AvatarBase64, Converter={StaticResource NullToVisibilityConverter}}"/>
                                 </Grid>
                             </Border>
                             <!-- Name + email -->
