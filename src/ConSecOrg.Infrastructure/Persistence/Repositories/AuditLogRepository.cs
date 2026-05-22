@@ -11,7 +11,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
     public AuditLogRepository(AppDbContext db) => _db = db;
 
     public Task<AuditLog?> GetLastAsync(CancellationToken ct = default)
-        => _db.AuditLogs.OrderByDescending(a => a.Timestamp).FirstOrDefaultAsync(ct);
+        => _db.AuditLogs.OrderByDescending(a => a.SequenceNum).FirstOrDefaultAsync(ct);
 
     public async Task<IReadOnlyList<AuditLog>> GetPagedAsync(int page, int pageSize,
         Guid? userId = null, DateTime? from = null, DateTime? to = null,
@@ -32,7 +32,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
     }
 
     public async Task<IReadOnlyList<AuditLog>> GetAllOrderedAsync(CancellationToken ct = default)
-        => await _db.AuditLogs.OrderBy(a => a.Timestamp).ToListAsync(ct);
+        => await _db.AuditLogs.OrderBy(a => a.SequenceNum).ToListAsync(ct);
 
     public async Task AddAsync(AuditLog log, CancellationToken ct = default)
         => await _db.AuditLogs.AddAsync(log, ct);

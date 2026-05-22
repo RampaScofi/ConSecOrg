@@ -80,6 +80,17 @@ public partial class AuditLogViewModel(
     }
 
     [RelayCommand]
+    private async Task RecomputeChainAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            var msg = await auditService.RecomputeChainAsync();
+            ChainVerifyResult = msg;
+            notifications.Success("Пересчёт завершён", msg);
+        });
+    }
+
+    [RelayCommand]
     private async Task ExportCsvAsync()
     {
         var dialog = new SaveFileDialog

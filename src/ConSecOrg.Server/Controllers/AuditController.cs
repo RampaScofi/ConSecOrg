@@ -1,4 +1,7 @@
 using ConSecOrg.Application.Features.Audit.Queries;
+using ConSecOrg.Domain.Interfaces.Repositories;
+using ConSecOrg.Domain.Interfaces.Services;
+using ConSecOrg.Infrastructure.Crypto;
 using ConSecOrg.Shared.DTOs.Audit;
 using ConSecOrg.Shared.Pagination;
 using MediatR;
@@ -15,8 +18,26 @@ namespace ConSecOrg.Server.Controllers;
 [ApiController]
 [Route("api/v1/audit")]
 [Authorize(Roles = "Admin,Auditor")]
-public class AuditController(ISender sender) : ControllerBase
+public class AuditController(ISender sender, IUnitOfWork uow, IHashChainService chainService) : ControllerBase
 {
+    [HttpPost("recompute-chain")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RecomputeChain(CancellationToken ct)
+    {
+        var logs = await uow.AuditLogs.GetAllOrderedAsync(ct);
+        byte[]? prevHash = null;
+
+        foreach (var log in logs)
+        {
+            var entry = chainService.ComputeEntry(prevHash, log);
+            log.SetHashChain(entry.PreviousHash, entry.CurrentHash);
+            prevHash = entry.CurrentHash;
+        }
+
+        await uow.SaveChangesAsync(ct);
+        return Ok(new { recomputed = logs.Count, message = $"Цепочка пересчитана для {logs.Count} записей." });
+    }
+
     [HttpGet]
     public async Task<ActionResult<PagedResponse<AuditLogDto>>> GetLogs(
         [FromQuery] int page = 1,

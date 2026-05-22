@@ -310,6 +310,14 @@ public sealed class ApiClient :
 
     public Task<AuditChainVerifyResultDto> VerifyChainAsync() => SendAsync<AuditChainVerifyResultDto>(Req("api/v1/audit/verify"));
 
+    public async Task<string> RecomputeChainAsync()
+    {
+        var req = Req("api/v1/audit/recompute-chain");
+        req.Method = RestSharp.Method.Post;
+        var resp = await GetClient().ExecuteAsync(req);
+        return resp.IsSuccessful ? "Цепочка успешно пересчитана." : $"Ошибка: {resp.StatusCode}";
+    }
+
     public async Task<byte[]> ExportCsvAsync()
     {
         var response = await GetClient().ExecuteAsync(Req("api/v1/audit/export"));

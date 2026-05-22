@@ -35,4 +35,10 @@ public class AuditLog : BaseEntity<Guid>
         CurrentHash = chainEntry.CurrentHash;
         DetailsJson = detailsJson;
     }
+
+    public void SetHashChain(byte[] previousHash, byte[] currentHash)
+    {
+        PreviousHash = previousHash;
+        CurrentHash = currentHash;
+    }
 }

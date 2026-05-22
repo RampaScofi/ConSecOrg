@@ -24,10 +24,20 @@
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Button Style="{StaticResource MaterialDesignOutlinedButton}"
                             Command="{Binding VerifyChainCommand}"
-                            Margin="0,0,8,0">
+                            Margin="0,0,8,0"
+                            ToolTip="Проверить целостность всех записей аудита">
                         <StackPanel Orientation="Horizontal">
                             <md:PackIcon Kind="ShieldSearch" Width="18" Height="18" Margin="0,0,6,0"/>
                             <TextBlock Text="Проверить цепочку"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Command="{Binding RecomputeChainCommand}"
+                            Margin="0,0,8,0"
+                            ToolTip="Пересчитать хэши всех записей (нужно после обновления системы)">
+                        <StackPanel Orientation="Horizontal">
+                            <md:PackIcon Kind="ShieldSync" Width="18" Height="18" Margin="0,0,6,0"/>
+                            <TextBlock Text="Пересчитать хэши"/>
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource MaterialDesignOutlinedButton}"

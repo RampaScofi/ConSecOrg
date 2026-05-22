@@ -13,39 +13,27 @@ public sealed class HashChainService : IHashChainService
     public HashChainEntry ComputeEntry(byte[]? previousHash, AuditLog currentData)
     {
         var prev = previousHash ?? HashChainEntry.GenesisHash;
-        var parts = new[]
-        {
-            prev,
-            TimestampBytes(currentData.Timestamp),
-            Encoding.UTF8.GetBytes(currentData.Action.ToString()),
-            Encoding.UTF8.GetBytes(currentData.EntityId ?? ""),
-            Encoding.UTF8.GetBytes(currentData.UserId?.ToString() ?? "")
-        };
-
-        var combined = parts.SelectMany(p => p).ToArray();
-        var current = _hasher.Hash256(combined);
-
+        var current = _hasher.Hash256(BuildInput(prev, currentData));
         return new HashChainEntry(prev, current);
     }
 
     public (bool Ok, long? TamperedAt) VerifyChain(IEnumerable<AuditLog> logs)
     {
-        var ordered = logs.OrderBy(l => l.Timestamp).ToList();
+        // Stable order: SequenceNum is IDENTITY — unique, monotonically increasing
+        var ordered = logs.OrderBy(l => l.SequenceNum).ToList();
+        if (ordered.Count == 0) return (true, null);
+
         byte[] expectedPrev = HashChainEntry.GenesisHash;
+        long expectedSeq = ordered[0].SequenceNum;
 
         foreach (var log in ordered)
         {
-            var parts = new[]
-            {
-                expectedPrev,
-                TimestampBytes(log.Timestamp),
-                Encoding.UTF8.GetBytes(log.Action.ToString()),
-                Encoding.UTF8.GetBytes(log.EntityId ?? ""),
-                Encoding.UTF8.GetBytes(log.UserId?.ToString() ?? "")
-            };
+            // Gap check: if any record was deleted, sequence numbers won't be contiguous
+            if (log.SequenceNum != expectedSeq)
+                return (false, log.SequenceNum);
 
-            var combined = parts.SelectMany(p => p).ToArray();
-            var recomputed = _hasher.Hash256(combined);
+            // Recompute hash from ALL fields — detect any field modification
+            var recomputed = _hasher.Hash256(BuildInput(expectedPrev, log));
 
             if (!recomputed.SequenceEqual(log.CurrentHash))
                 return (false, log.SequenceNum);
@@ -54,9 +42,29 @@ public sealed class HashChainService : IHashChainService
                 return (false, log.SequenceNum);
 
             expectedPrev = log.CurrentHash;
+            expectedSeq++;
         }
 
         return (true, null);
+    }
+
+    private static byte[] BuildInput(byte[] previousHash, AuditLog log)
+    {
+        // Include ALL meaningful fields so tampering with ANY field is detected
+        var parts = new[]
+        {
+            previousHash,
+            TimestampBytes(log.Timestamp),
+            Encoding.UTF8.GetBytes(log.Action.ToString()),
+            Encoding.UTF8.GetBytes(log.EntityType ?? ""),
+            Encoding.UTF8.GetBytes(log.EntityId ?? ""),
+            Encoding.UTF8.GetBytes(log.UserId?.ToString() ?? ""),
+            Encoding.UTF8.GetBytes(log.Status ?? ""),
+            Encoding.UTF8.GetBytes(log.IpAddress ?? ""),
+            Encoding.UTF8.GetBytes(log.DetailsJson ?? ""),
+            BitConverter.GetBytes(log.SequenceNum)
+        };
+        return parts.SelectMany(p => p).ToArray();
     }
 
     // Truncate to milliseconds before encoding: datetime2 round-trip can lose sub-ms ticks,
