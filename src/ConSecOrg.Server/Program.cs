@@ -145,6 +145,58 @@ using (var scope = app.Services.CreateScope())
     {
         Log.Error(ex, "Failed to apply migrations: {Error}", ex.Message);
     }
+
+    // ── Создание начального администратора (--seed-admin <username> <password>) ──
+    var seedIdx = Array.IndexOf(args, "--seed-admin");
+    if (seedIdx >= 0 && seedIdx + 2 < args.Length)
+    {
+        var seedUsername = args[seedIdx + 1];
+        var seedPassword = args[seedIdx + 2];
+        try
+        {
+            var db2 = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var hasher = scope.ServiceProvider.GetRequiredService<ConSecOrg.Application.Common.Interfaces.IPasswordHasher>();
+
+            var adminRole = await db2.Roles.FirstOrDefaultAsync(r => r.Name == "Admin");
+            if (adminRole == null)
+            {
+                Log.Warning("--seed-admin: Role 'Admin' not found in database.");
+            }
+            else
+            {
+                bool exists = await db2.Users.AnyAsync(u => u.Username == seedUsername);
+                if (exists)
+                {
+                    Log.Information("--seed-admin: User '{Username}' already exists, skipping.", seedUsername);
+                }
+                else
+                {
+                    var (hash, salt) = hasher.Hash(seedPassword);
+                    var admin = new ConSecOrg.Domain.Entities.User(
+                        Guid.NewGuid(),
+                        seedUsername,
+                        $"{seedUsername}@local.consec",
+                        hash, salt,
+                        adminRole.Id);
+                    db2.Users.Add(admin);
+                    await db2.SaveChangesAsync();
+                    Log.Information("--seed-admin: Admin user '{Username}' created successfully.", seedUsername);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "--seed-admin failed: {Error}", ex.Message);
+        }
+    }
+}
+
+// ── Режим только миграции/посева (--migrate-only) — выходим после инициализации ─
+if (args.Contains("--migrate-only"))
+{
+    Log.Information("--migrate-only mode: initialization complete, exiting.");
+    Log.CloseAndFlush();
+    return;
 }
 
 // ── Pipeline ──────────────────────────────────────────────────────────────────

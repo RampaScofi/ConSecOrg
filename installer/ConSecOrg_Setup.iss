@@ -152,8 +152,9 @@ Root: HKLM; Subkey: "SOFTWARE\{#MyAppPublisher}\{#MyAppName}"; \
 
 [Run]
 ; Применить миграцию БД (только для сервера)
-Filename: "{app}\Server\{#MyAppServerExe}"; Parameters: "--migrate-only"; \
-    Description: "Создать/обновить базу данных"; \
+Filename: "{app}\Server\{#MyAppServerExe}"; \
+    Parameters: "--migrate-only --seed-admin ""{code:GetAdminUser}"" ""{code:GetAdminPass}"""; \
+    Description: "Создать/обновить базу данных и создать администратора"; \
     Flags: shellexec waituntilterminated; Components: server; \
     StatusMsg: "Инициализация базы данных..."; \
     Check: ServerAppsettingsExists
@@ -172,6 +173,7 @@ Filename: "taskkill"; Parameters: "/F /IM {#MyAppExeName}"; Flags: shellexec run
 var
   SqlServerPage: TInputQueryWizardPage;
   DbNamePage: TInputQueryWizardPage;
+  AdminUserPage: TInputQueryWizardPage;
 
 function ServerAppsettingsExists: Boolean;
 begin
@@ -195,13 +197,24 @@ begin
     'Введите имя базы данных ConSecOrg. По умолчанию: ConSecOrg');
   DbNamePage.Add('Имя базы данных:', False);
   DbNamePage.Values[0] := 'ConSecOrg';
+
+  AdminUserPage := CreateInputQueryPage(DbNamePage.ID,
+    'Учётная запись администратора',
+    'Создать первого администратора',
+    'Будет создан администратор с полным доступом к системе. ' +
+    'Вы сможете сменить пароль после входа в настройках.');
+  AdminUserPage.Add('Логин администратора:', False);
+  AdminUserPage.Values[0] := 'admin';
+  AdminUserPage.Add('Пароль администратора:', True);
+  AdminUserPage.Values[1] := 'Admin1234!@#$';
 end;
 
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   Result := False;
-  // Пропустить страницы БД если сервер не выбран
-  if (PageID = SqlServerPage.ID) or (PageID = DbNamePage.ID) then
+  // Пропустить страницы БД и админа если сервер не выбран
+  if (PageID = SqlServerPage.ID) or (PageID = DbNamePage.ID) or
+     (PageID = AdminUserPage.ID) then
     Result := not IsComponentSelected('server');
 end;
 
@@ -257,6 +270,33 @@ begin
       Result := False;
     end;
   end;
+
+  if CurPageID = AdminUserPage.ID then
+  begin
+    if Trim(AdminUserPage.Values[0]) = '' then
+    begin
+      MsgBox('Введите логин администратора.', mbError, MB_OK);
+      Result := False;
+      Exit;
+    end;
+    if Length(AdminUserPage.Values[1]) < 8 then
+    begin
+      MsgBox('Пароль администратора должен содержать не менее 8 символов.', mbError, MB_OK);
+      Result := False;
+    end;
+  end;
+end;
+
+function GetAdminUser(Param: String): String;
+begin
+  Result := AdminUserPage.Values[0];
+  if Result = '' then Result := 'admin';
+end;
+
+function GetAdminPass(Param: String): String;
+begin
+  Result := AdminUserPage.Values[1];
+  if Result = '' then Result := 'Admin1234!@#$';
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
