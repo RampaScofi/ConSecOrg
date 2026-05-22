@@ -207,7 +207,8 @@ end;
 
 function UpdateAppsettings: Boolean;
 var
-  AppSettingsPath, Content, ServerName, DbName, ConnStr: string;
+  AppSettingsPath, ServerName, DbName, ConnStr, ContentStr: string;
+  Content: AnsiString;
 begin
   Result := True;
   if not IsComponentSelected('server') then Exit;
@@ -230,12 +231,12 @@ begin
     Exit;
   end;
 
-  // Заменить строку подключения
-  StringChange(Content,
+  ContentStr := Content;
+  StringChange(ContentStr,
     '"DefaultConnection": "Server=localhost;Database=ConSecOrg;Trusted_Connection=True;TrustServerCertificate=True;"',
     '"DefaultConnection": "' + ConnStr + '"');
 
-  SaveStringToFile(AppSettingsPath, Content, False);
+  SaveStringToFile(AppSettingsPath, ContentStr, False);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
