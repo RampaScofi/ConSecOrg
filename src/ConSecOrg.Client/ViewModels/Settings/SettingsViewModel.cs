@@ -244,6 +244,21 @@ public partial class SettingsViewModel : BasePageViewModel
         NotifyProfileChanged();
     }
 
+    public override async Task OnNavigatedToAsync()
+    {
+        // Если у пользователя есть локальная аватарка, но на сервере её ещё нет — загружаем автоматически
+        if (_modeService.IsCorporate && HasAvatar)
+        {
+            var userId = _sessionService.CurrentUser?.Id;
+            if (userId.HasValue)
+            {
+                var serverAvatar = await _avatarCache.GetAsync(userId.Value);
+                if (string.IsNullOrEmpty(serverAvatar))
+                    await UploadAvatarToServerAsync(AvatarImagePath);
+            }
+        }
+    }
+
     private async Task UploadAvatarToServerAsync(string? imagePath)
     {
         if (_modeService.IsPersonal) return;

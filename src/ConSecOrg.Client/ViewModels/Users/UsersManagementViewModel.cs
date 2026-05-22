@@ -1,10 +1,12 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ConSecOrg.Client.Infrastructure.Api;
+using ConSecOrg.Client.Services;
 using ConSecOrg.Client.ViewModels.Base;
 using ConSecOrg.Shared.DTOs.Users;
 using ConSecOrg.Shared.Enums;
 using System.Collections.ObjectModel;
+using System.Windows.Media.Imaging;
 
 namespace ConSecOrg.Client.ViewModels.Users;
 
@@ -15,11 +17,14 @@ public partial class UserRow : ObservableObject
     public string Email { get; }
     [ObservableProperty] private UserRoleDto _role;
     [ObservableProperty] private bool _isLocked;
+    [ObservableProperty] private string? _avatarBase64;
     public DateTime? LastLoginAt { get; }
     public DateTime CreatedAt { get; }
 
     public string StatusLabel => IsLocked ? "Заблокирован" : "Активен";
     public string StatusColor => IsLocked ? "#EF5350" : "#4CAF50";
+    public bool HasAvatar => !string.IsNullOrEmpty(AvatarBase64);
+    public BitmapImage? AvatarImage => AvatarCacheService.Base64ToImage(AvatarBase64);
 
     public string LastLoginDisplay => LastLoginAt.HasValue
         ? LastLoginAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
@@ -37,9 +42,15 @@ public partial class UserRow : ObservableObject
     }
 
     partial void OnIsLockedChanged(bool value) => OnPropertyChanged(nameof(StatusLabel));
+
+    partial void OnAvatarBase64Changed(string? value)
+    {
+        OnPropertyChanged(nameof(HasAvatar));
+        OnPropertyChanged(nameof(AvatarImage));
+    }
 }
 
-public partial class UsersManagementViewModel(IUsersManagementApiService usersApi) : BasePageViewModel
+public partial class UsersManagementViewModel(IUsersManagementApiService usersApi, AvatarCacheService avatarCache) : BasePageViewModel
 {
     private List<UserRow> _allUsers = [];
 
@@ -68,6 +79,15 @@ public partial class UsersManagementViewModel(IUsersManagementApiService usersAp
             var list = await usersApi.GetAllUsersAsync();
             _allUsers = list.Select(u => new UserRow(u)).ToList();
             ApplyFilter();
+            _ = Task.Run(async () =>
+            {
+                foreach (var row in _allUsers)
+                {
+                    var b64 = await avatarCache.GetAsync(row.Id);
+                    if (!string.IsNullOrEmpty(b64))
+                        System.Windows.Application.Current.Dispatcher.Invoke(() => row.AvatarBase64 = b64);
+                }
+            });
         }
         catch (Exception ex)
         {

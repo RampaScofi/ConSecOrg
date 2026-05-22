@@ -129,10 +129,16 @@
 
                                         <!-- Avatar circle -->
                                         <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16"
-                                                Background="{DynamicResource AccentBrush}">
-                                            <TextBlock Text="{Binding Username, Converter={StaticResource FirstLetterConverter}}"
-                                                       Foreground="White" FontSize="13" FontWeight="Bold"
-                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                Background="{DynamicResource AccentBrush}"
+                                                ClipToBounds="True">
+                                            <Grid>
+                                                <TextBlock Text="{Binding Username, Converter={StaticResource FirstLetterConverter}}"
+                                                           Foreground="White" FontSize="13" FontWeight="Bold"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           Visibility="{Binding HasAvatar, Converter={StaticResource InvertedBoolToVisibilityConverter}}"/>
+                                                <Image Source="{Binding AvatarImage}" Stretch="UniformToFill"
+                                                       Visibility="{Binding HasAvatar, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                            </Grid>
                                         </Border>
 
                                         <!-- Username -->

@@ -164,12 +164,19 @@ public partial class ContactsViewModel : BasePageViewModel
         // подгружаем аватарки связанных пользователей в фоне
         _ = Task.Run(async () =>
         {
+            bool anyLoaded = false;
             foreach (var c in _allContacts.Where(c => c.LinkedUserId.HasValue))
             {
                 var base64 = await _avatarCache.GetAsync(c.LinkedUserId!.Value);
                 if (!string.IsNullOrEmpty(base64))
+                {
                     c.AvatarBase64 = base64;
+                    anyLoaded = true;
+                }
             }
+            // ContactDto не реализует INotifyPropertyChanged, поэтому пересоздаём коллекцию
+            if (anyLoaded)
+                System.Windows.Application.Current.Dispatcher.Invoke(ApplyFilter);
         });
     }
 
