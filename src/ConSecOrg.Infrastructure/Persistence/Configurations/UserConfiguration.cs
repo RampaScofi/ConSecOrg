@@ -16,6 +16,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Salt).HasColumnType("VARBINARY(32)").IsRequired();
         builder.Property(u => u.DeviceId).HasMaxLength(88);
         builder.Property(u => u.LastLoginIp).HasMaxLength(45);
+        builder.Property(u => u.AvatarBase64).HasColumnName("avatar_base64").HasColumnType("NVARCHAR(MAX)");
 
         builder.HasIndex(u => u.Username).IsUnique();
         builder.HasIndex(u => u.Email).IsUnique();

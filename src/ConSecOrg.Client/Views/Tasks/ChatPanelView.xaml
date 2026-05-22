@@ -137,12 +137,19 @@
                                     </StackPanel.Style>
                                     <Border Width="28" Height="28" CornerRadius="14"
                                             Background="{DynamicResource AccentBrush}"
-                                            Margin="0,0,6,0" VerticalAlignment="Top">
-                                        <TextBlock Text="{Binding SenderLetter}"
-                                                   FontSize="11" FontWeight="Bold"
-                                                   Foreground="White"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"/>
+                                            Margin="0,0,6,0" VerticalAlignment="Top"
+                                            ClipToBounds="True">
+                                        <Grid>
+                                            <TextBlock Text="{Binding SenderLetter}"
+                                                       FontSize="11" FontWeight="Bold"
+                                                       Foreground="White"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Visibility="{Binding HasAvatar, Converter={StaticResource InvertedBoolToVisibilityConverter}}"/>
+                                            <Image Source="{Binding AvatarImage}"
+                                                   Stretch="UniformToFill"
+                                                   Visibility="{Binding HasAvatar, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        </Grid>
                                     </Border>
                                     <StackPanel>
                                         <!-- Image attachment -->

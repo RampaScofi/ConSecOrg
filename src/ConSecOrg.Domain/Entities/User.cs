@@ -17,6 +17,7 @@ public class User : AuditableEntity<Guid>
     public int FailedAttempts { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
     public string? LastLoginIp { get; private set; }
+    public string? AvatarBase64 { get; private set; }
 
     public UserSettings? Settings { get; private set; }
 
@@ -70,4 +71,6 @@ public class User : AuditableEntity<Guid>
     public void AssignRole(Guid roleId) => RoleId = roleId;
 
     public void ChangeEmail(string newEmail) => Email = newEmail;
+
+    public void SetAvatar(string? base64) => AvatarBase64 = base64;
 }

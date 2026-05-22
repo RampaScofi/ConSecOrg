@@ -19,13 +19,15 @@ public partial class ContactsViewModel : BasePageViewModel
     private readonly NavigationService _navigation;
     private readonly ModeService _modeService;
     private readonly SharedChatPanelViewModel _chatPanel;
+    private readonly Services.AvatarCacheService _avatarCache;
 
     public ContactsViewModel(IContactsApiService contactsService,
         IUserSearchApiService userSearchService,
         ISharedProjectsApiService sharedProjectsService,
         NavigationService navigation,
         ModeService modeService,
-        SharedChatPanelViewModel chatPanel)
+        SharedChatPanelViewModel chatPanel,
+        Services.AvatarCacheService avatarCache)
     {
         _contactsService = contactsService;
         _userSearchService = userSearchService;
@@ -33,6 +35,7 @@ public partial class ContactsViewModel : BasePageViewModel
         _navigation = navigation;
         _modeService = modeService;
         _chatPanel = chatPanel;
+        _avatarCache = avatarCache;
     }
 
     public override string Title => "Контакты";
@@ -157,6 +160,16 @@ public partial class ContactsViewModel : BasePageViewModel
             var result = await _contactsService.GetContactsAsync();
             _allContacts = [.. result];
             ApplyFilter();
+        });
+        // подгружаем аватарки связанных пользователей в фоне
+        _ = Task.Run(async () =>
+        {
+            foreach (var c in _allContacts.Where(c => c.LinkedUserId.HasValue))
+            {
+                var base64 = await _avatarCache.GetAsync(c.LinkedUserId!.Value);
+                if (!string.IsNullOrEmpty(base64))
+                    c.AvatarBase64 = base64;
+            }
         });
     }
 

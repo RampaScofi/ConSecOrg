@@ -13,4 +13,6 @@ public class ContactDto
     public Guid? LinkedUserId { get; set; }
     // Client-side only: pinned state
     public bool IsPinned { get; set; }
+    // Client-side only: avatar from linked user (populated locally)
+    public string? AvatarBase64 { get; set; }
 }

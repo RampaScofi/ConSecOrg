@@ -57,8 +57,17 @@ public partial class PanelMsgVm : ObservableObject
     [ObservableProperty] private string?     _attachmentFileName;
     [ObservableProperty] private long?       _attachmentSize;
     [ObservableProperty] private MsgStatus   _status = MsgStatus.Sent;
+    [ObservableProperty] private string?    _senderAvatarBase64;
+
+    partial void OnSenderAvatarBase64Changed(string? value)
+    {
+        OnPropertyChanged(nameof(HasAvatar));
+        OnPropertyChanged(nameof(AvatarImage));
+    }
 
     public string SenderLetter => SenderUsername.Length > 0 ? SenderUsername[0].ToString().ToUpper() : "?";
+    public bool HasAvatar => !string.IsNullOrEmpty(SenderAvatarBase64);
+    public System.Windows.Media.Imaging.BitmapImage? AvatarImage => Services.AvatarCacheService.Base64ToImage(SenderAvatarBase64);
     public string TimeDisplay  => SentAt.ToLocalTime().ToString("HH:mm");
     public bool   HasAttachment     => !string.IsNullOrEmpty(AttachmentFileId);
     public bool   IsImageAttachment => HasAttachment &&
@@ -97,6 +106,7 @@ public partial class SharedChatPanelViewModel : ObservableObject
     private readonly SharedProjectsHubClient _hub;
     private readonly SessionService _session;
     private readonly ModeService _mode;
+    private readonly Services.AvatarCacheService _avatarCache;
 
     [ObservableProperty] private bool _isOpen;
     [ObservableProperty] private string _title = string.Empty;
@@ -139,12 +149,14 @@ public partial class SharedChatPanelViewModel : ObservableObject
         "💓","💗","💖","💘","💝","💟","✅","❌","⭐","🔥","💯","🎉","🎊","🚀"
     ];
 
-    public SharedChatPanelViewModel(IChatApiService api, SharedProjectsHubClient hub, SessionService session, ModeService mode)
+    public SharedChatPanelViewModel(IChatApiService api, SharedProjectsHubClient hub, SessionService session, ModeService mode,
+        Services.AvatarCacheService avatarCache)
     {
         _api = api;
         _hub = hub;
         _session = session;
         _mode = mode;
+        _avatarCache = avatarCache;
         _hub.ChatMessageReceived += OnIncomingMessage;
         _hub.MessagesRead += OnMessagesRead;
     }
@@ -166,9 +178,11 @@ public partial class SharedChatPanelViewModel : ObservableObject
             var chatKey = $"project:{projectId:N}";
             _ = _api.MarkReadAsync(chatKey);
             var msgs = await _api.GetProjectMessagesAsync(projectId);
-            foreach (var m in msgs) _rawMessages.Add(MapVm(m));
+            var vms = msgs.Select(MapVm).ToList();
+            foreach (var vm in vms) _rawMessages.Add(vm);
             RebuildChatItems();
             ScrollToBottomRequested?.Invoke();
+            _ = Task.Run(async () => { foreach (var (m, vm) in msgs.Zip(vms)) await EnrichWithAvatarAsync(vm, m.SenderUserId); });
         }
         catch { }
     }
@@ -190,9 +204,11 @@ public partial class SharedChatPanelViewModel : ObservableObject
             _ = _api.MarkReadAsync(chatKey);
             _ = _hub.NotifyDirectReadAsync(otherUserId);
             var msgs = await _api.GetDirectMessagesAsync(otherUserId);
-            foreach (var m in msgs) _rawMessages.Add(MapVm(m));
+            var vms = msgs.Select(MapVm).ToList();
+            foreach (var vm in vms) _rawMessages.Add(vm);
             RebuildChatItems();
             ScrollToBottomRequested?.Invoke();
+            _ = Task.Run(async () => { foreach (var (m, vm) in msgs.Zip(vms)) await EnrichWithAvatarAsync(vm, m.SenderUserId); });
         }
         catch { }
     }
@@ -453,4 +469,13 @@ public partial class SharedChatPanelViewModel : ObservableObject
         AttachmentUrl      = string.IsNullOrEmpty(m.AttachmentFileId) ? null : BuildFileUrl(m.AttachmentFileId),
         Status             = m.IsReadByRecipient ? MsgStatus.Read : MsgStatus.Sent
     };
+
+    private async Task EnrichWithAvatarAsync(PanelMsgVm vm, Guid senderUserId)
+    {
+        var base64 = await _avatarCache.GetAsync(senderUserId);
+        if (!string.IsNullOrEmpty(base64))
+        {
+            vm.SenderAvatarBase64 = base64;
+        }
+    }
 }

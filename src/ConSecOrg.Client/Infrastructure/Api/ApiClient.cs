@@ -325,6 +325,21 @@ public sealed class ApiClient :
     public Task<IReadOnlyList<UserSearchDto>> SearchUsersAsync(string query) =>
         SendAsync<IReadOnlyList<UserSearchDto>>(Req($"api/v1/users/search?q={Uri.EscapeDataString(query)}"));
 
+    public async Task<string?> GetUserAvatarAsync(Guid userId)
+    {
+        var resp = await GetClient().ExecuteAsync(Req($"api/v1/users/{userId}/avatar"));
+        if (!resp.IsSuccessful) return null;
+        var doc = System.Text.Json.JsonDocument.Parse(resp.Content!);
+        return doc.RootElement.TryGetProperty("avatarBase64", out var prop) ? prop.GetString() : null;
+    }
+
+    public async Task UploadAvatarAsync(Guid userId, string? base64)
+    {
+        var req = Req($"api/v1/users/{userId}/avatar", Method.Put);
+        req.AddJsonBody(new ConSecOrg.Shared.DTOs.Users.UpdateAvatarRequestDto { AvatarBase64 = base64 });
+        await GetClient().ExecuteAsync(req);
+    }
+
     public async Task SendContactRequestAsync(SendContactRequestDto request)
     {
         var req = Req("api/v1/contacts/requests", Method.Post);

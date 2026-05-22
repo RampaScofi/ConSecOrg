@@ -19,6 +19,7 @@
     <conv:HexToAlpha30Converter x:Key="HexToAlpha30Converter"/>
     <conv:StringEqualityToVisibilityConverter x:Key="StringEqualityToVisibilityConverter"/>
     <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
+    <conv:Base64ToImageConverter x:Key="Base64ToImageConverter"/>
     <conv:ZeroToVisibilityConverter x:Key="ZeroToVisibilityConverter"/>
     <BooleanToVisibilityConverter x:Key="WpfBoolToVisibility"/>
 

@@ -13,4 +13,5 @@ public class UserDto
     public DateTime? LastLoginAt { get; set; }
     public string? LastLoginIp { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? AvatarBase64 { get; set; }
 }

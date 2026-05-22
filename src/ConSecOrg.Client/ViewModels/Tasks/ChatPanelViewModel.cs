@@ -5,6 +5,7 @@ using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Windows.Media.Imaging;
 
 namespace ConSecOrg.Client.ViewModels.Tasks;
 
@@ -26,9 +27,19 @@ public partial class ChatMessageViewModel : ObservableObject
          AttachmentFileName?.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) == true ||
          AttachmentFileName?.EndsWith(".webp", StringComparison.OrdinalIgnoreCase) == true);
     public bool IsFileAttachment => HasAttachment && !IsImageAttachment;
+
+    [ObservableProperty] private string? _senderAvatarBase64;
+    public bool HasAvatar => !string.IsNullOrEmpty(SenderAvatarBase64);
+    public BitmapImage? AvatarImage => AvatarCacheService.Base64ToImage(SenderAvatarBase64);
+
+    partial void OnSenderAvatarBase64Changed(string? value)
+    {
+        OnPropertyChanged(nameof(HasAvatar));
+        OnPropertyChanged(nameof(AvatarImage));
+    }
 }
 
-public partial class ChatPanelViewModel(ChatService chatService, SessionService session) : ObservableObject
+public partial class ChatPanelViewModel(ChatService chatService, SessionService session, AvatarCacheService avatarCache) : ObservableObject
 {
     [ObservableProperty] private bool _isOpen;
     [ObservableProperty] private string _chatTitle = string.Empty;
@@ -118,17 +129,29 @@ public partial class ChatPanelViewModel(ChatService chatService, SessionService 
     {
         var myId = session.CurrentUser?.Id.ToString() ?? "local";
         var raw = chatService.LoadMessages(_currentChatId);
-        Messages = new ObservableCollection<ChatMessageViewModel>(
-            raw.Select(m => new ChatMessageViewModel
-            {
-                SenderUsername = m.SenderUsername,
-                Text = m.Text,
-                TimeDisplay = m.SentAt.ToString("HH:mm"),
-                IsMine = m.SenderUserId == myId,
-                AttachmentPath = m.AttachmentPath,
-                AttachmentFileName = m.AttachmentFileName
-            }));
-        // Notify view to scroll to the latest message
+        var vms = raw.Select(m => new ChatMessageViewModel
+        {
+            SenderUsername = m.SenderUsername,
+            Text = m.Text,
+            TimeDisplay = m.SentAt.ToString("HH:mm"),
+            IsMine = m.SenderUserId == myId,
+            AttachmentPath = m.AttachmentPath,
+            AttachmentFileName = m.AttachmentFileName
+        }).ToList();
+        Messages = new ObservableCollection<ChatMessageViewModel>(vms);
         ScrollToBottomRequested?.Invoke();
+        _ = EnrichWithAvatarsAsync(vms, raw);
+    }
+
+    private async Task EnrichWithAvatarsAsync(List<ChatMessageViewModel> vms, List<ConSecOrg.Client.Services.ChatMessageEntry> raw)
+    {
+        for (int i = 0; i < vms.Count; i++)
+        {
+            if (vms[i].IsMine) continue;
+            if (!Guid.TryParse(raw[i].SenderUserId, out var uid)) continue;
+            var b64 = await avatarCache.GetAsync(uid);
+            if (!string.IsNullOrEmpty(b64))
+                System.Windows.Application.Current.Dispatcher.Invoke(() => vms[i].SenderAvatarBase64 = b64);
+        }
     }
 }

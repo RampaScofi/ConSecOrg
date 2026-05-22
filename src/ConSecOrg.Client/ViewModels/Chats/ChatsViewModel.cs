@@ -28,8 +28,17 @@ public partial class ChatMsgVm : ObservableObject
     [ObservableProperty] private long? _attachmentSize;
     [ObservableProperty] private string? _attachmentUrl;
     [ObservableProperty] private MsgStatus _status = MsgStatus.Sent;
+    [ObservableProperty] private string? _senderAvatarBase64;
+
+    partial void OnSenderAvatarBase64Changed(string? value)
+    {
+        OnPropertyChanged(nameof(HasAvatar));
+        OnPropertyChanged(nameof(AvatarImage));
+    }
 
     public string SenderLetter => SenderUsername.Length > 0 ? SenderUsername[0].ToString().ToUpper() : "?";
+    public bool HasAvatar => !string.IsNullOrEmpty(SenderAvatarBase64);
+    public System.Windows.Media.Imaging.BitmapImage? AvatarImage => Services.AvatarCacheService.Base64ToImage(SenderAvatarBase64);
     public string TimeDisplay => SentAt.ToLocalTime().ToString("HH:mm");
     public bool HasAttachment => !string.IsNullOrEmpty(AttachmentFileId);
     public bool IsNonImageAttachment => HasAttachment && !IsImageAttachment;
@@ -155,6 +164,7 @@ public partial class ChatsViewModel : ConSecOrg.Client.ViewModels.Base.BasePageV
     private readonly Services.SharedProjectsHubClient _hub;
     private readonly SessionService _session;
     private readonly ModeService _mode;
+    private readonly Services.AvatarCacheService _avatarCache;
 
     public override string Title => "Чаты";
 
@@ -219,7 +229,8 @@ public partial class ChatsViewModel : ConSecOrg.Client.ViewModels.Base.BasePageV
 
     public ChatsViewModel(IChatApiService api, IContactsApiService contactsApi,
         IUserSearchApiService userSearchApi,
-        Services.SharedProjectsHubClient hub, SessionService session, ModeService mode)
+        Services.SharedProjectsHubClient hub, SessionService session, ModeService mode,
+        Services.AvatarCacheService avatarCache)
     {
         _api = api;
         _contactsApi = contactsApi;
@@ -227,6 +238,7 @@ public partial class ChatsViewModel : ConSecOrg.Client.ViewModels.Base.BasePageV
         _hub = hub;
         _session = session;
         _mode = mode;
+        _avatarCache = avatarCache;
         _hub.ChatMessageReceived += OnIncomingMessage;
         _hub.MessagesRead += OnMessagesRead;
         _hub.MessageDeleted += OnMessageDeleted;
@@ -314,9 +326,16 @@ public partial class ChatsViewModel : ConSecOrg.Client.ViewModels.Base.BasePageV
                     await _api.GetGroupMessagesAsync(summary.GroupChatId.Value),
                 _ => []
             };
-            foreach (var m in msgs) _rawMessages.Add(MapVm(m));
+            var vms = msgs.Select(MapVm).ToList();
+            foreach (var vm in vms) _rawMessages.Add(vm);
             RebuildChatItems();
             ScrollToBottomRequested?.Invoke();
+            // загружаем аватарки в фоне — не блокируем UI
+            _ = Task.Run(async () =>
+            {
+                foreach (var (m, vm) in msgs.Zip(vms))
+                    await EnrichWithAvatarAsync(vm, m.SenderUserId);
+            });
         }
         catch (Exception ex) { StatusText = $"Ошибка загрузки сообщений: {ex.Message}"; }
         finally { IsLoadingMessages = false; }
@@ -741,6 +760,7 @@ public partial class ChatsViewModel : ConSecOrg.Client.ViewModels.Base.BasePageV
                 if (!_rawMessages.Any(m => m.Id == msg.Id))
                 {
                     var vm = MapVm(msg);
+                    _ = EnrichWithAvatarAsync(vm, msg.SenderUserId);
                     _rawMessages.Add(vm);
                     AppendOrRebuildWithMessage(vm);
                     ScrollToBottomRequested?.Invoke();
@@ -869,4 +889,13 @@ public partial class ChatsViewModel : ConSecOrg.Client.ViewModels.Base.BasePageV
                              : $"{_mode.ServerUrl.TrimEnd('/')}/api/v1/files/{m.AttachmentFileId}",
         Status             = m.IsReadByRecipient ? MsgStatus.Read : MsgStatus.Sent
     };
+
+    private async Task EnrichWithAvatarAsync(ChatMsgVm vm, Guid senderUserId)
+    {
+        var base64 = await _avatarCache.GetAsync(senderUserId);
+        if (!string.IsNullOrEmpty(base64))
+        {
+            vm.SenderAvatarBase64 = base64;
+        }
+    }
 }

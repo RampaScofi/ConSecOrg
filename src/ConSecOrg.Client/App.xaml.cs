@@ -79,6 +79,7 @@ public partial class App : WpfApp
         services.AddSingleton<NoteMetaService>();
         services.AddSingleton<TaskMetaService>();
         services.AddSingleton<UserSettingsService>();
+        services.AddSingleton<AvatarCacheService>();
         services.AddSingleton<ChatService>();
         services.AddSingleton<ChatPanelViewModel>();
         services.AddSingleton<SharedProjectsHubClient>();

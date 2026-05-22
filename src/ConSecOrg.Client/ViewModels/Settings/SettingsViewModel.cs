@@ -25,11 +25,14 @@ public partial class SettingsViewModel : BasePageViewModel
     private readonly UserSettingsService _userSettings;
     private readonly ChangePasswordDialogViewModel _changePwdVm;
     private readonly ChangeEmailDialogViewModel _changeEmailVm;
+    private readonly AvatarCacheService _avatarCache;
+    private readonly IUserSearchApiService _userSearchApi;
     private readonly KdfService _kdf = new();
 
     public SettingsViewModel(SessionService sessionService, ModeService modeService, AppViewModel appViewModel,
         IAuthApiService authService, LocalUserStore localUserStore, UserSettingsService userSettings,
-        ChangePasswordDialogViewModel changePwdVm, ChangeEmailDialogViewModel changeEmailVm)
+        ChangePasswordDialogViewModel changePwdVm, ChangeEmailDialogViewModel changeEmailVm,
+        AvatarCacheService avatarCache, IUserSearchApiService userSearchApi)
     {
         _sessionService = sessionService;
         _modeService = modeService;
@@ -39,6 +42,8 @@ public partial class SettingsViewModel : BasePageViewModel
         _userSettings = userSettings;
         _changePwdVm = changePwdVm;
         _changeEmailVm = changeEmailVm;
+        _avatarCache = avatarCache;
+        _userSearchApi = userSearchApi;
 
         var s = _userSettings.Current;
         _selectedTheme = string.IsNullOrEmpty(s.Theme) ? ThemeEngine.Instance.CurrentTheme : s.Theme;
@@ -205,7 +210,7 @@ public partial class SettingsViewModel : BasePageViewModel
     }
 
     [RelayCommand]
-    private void BrowseAvatar()
+    private async Task BrowseAvatarAsync()
     {
         var dlg = new OpenFileDialog
         {
@@ -219,15 +224,17 @@ public partial class SettingsViewModel : BasePageViewModel
         OnPropertyChanged(nameof(HasAvatar));
         _userSettings.UpdateProfile(FullName, AvatarImagePath);
         NotifyProfileChanged();
+        await UploadAvatarToServerAsync(AvatarImagePath);
     }
 
     [RelayCommand]
-    private void ClearAvatar()
+    private async Task ClearAvatarAsync()
     {
         AvatarImagePath = string.Empty;
         OnPropertyChanged(nameof(HasAvatar));
         _userSettings.UpdateProfile(FullName, AvatarImagePath);
         NotifyProfileChanged();
+        await UploadAvatarToServerAsync(null);
     }
 
     [RelayCommand]
@@ -235,6 +242,27 @@ public partial class SettingsViewModel : BasePageViewModel
     {
         _userSettings.UpdateProfile(FullName, AvatarImagePath);
         NotifyProfileChanged();
+    }
+
+    private async Task UploadAvatarToServerAsync(string? imagePath)
+    {
+        if (_modeService.IsPersonal) return;
+        var userId = _sessionService.CurrentUser?.Id;
+        if (userId is null) return;
+        try
+        {
+            string? base64 = null;
+            if (!string.IsNullOrEmpty(imagePath) && System.IO.File.Exists(imagePath))
+            {
+                var bytes = await System.IO.File.ReadAllBytesAsync(imagePath);
+                // Ограничение 512 КБ — достаточно для аватарок 128x128
+                if (bytes.Length <= 512 * 1024)
+                    base64 = Convert.ToBase64String(bytes);
+            }
+            await _userSearchApi.UploadAvatarAsync(userId.Value, base64);
+            _avatarCache.Update(userId.Value, base64);
+        }
+        catch { /* не критично — аватарка сохранена локально */ }
     }
 
     private void NotifyProfileChanged()

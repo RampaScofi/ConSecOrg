@@ -35,9 +35,37 @@ public class UsersController(ISender sender) : ControllerBase
             .Where(u => !u.IsLocked && u.Id != currentUserId &&
                         (u.Username.ToLower().Contains(lower) || u.Email.ToLower().Contains(lower)))
             .Take(20)
-            .Select(u => new UserSearchDto { Id = u.Id, Username = u.Username, Email = u.Email })
+            .Select(u => new UserSearchDto { Id = u.Id, Username = u.Username, Email = u.Email, AvatarBase64 = u.AvatarBase64 })
             .ToListAsync(ct);
         return Ok(users);
+    }
+
+    [HttpGet("{id:guid}/avatar")]
+    public async Task<IActionResult> GetAvatar(Guid id, CancellationToken ct)
+    {
+        var db = HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+        var avatar = await db.Users
+            .Where(u => u.Id == id)
+            .Select(u => u.AvatarBase64)
+            .FirstOrDefaultAsync(ct);
+        if (string.IsNullOrEmpty(avatar)) return NotFound();
+        return Ok(new { avatarBase64 = avatar });
+    }
+
+    [HttpPut("{id:guid}/avatar")]
+    public async Task<IActionResult> UpdateAvatar(Guid id, [FromBody] UpdateAvatarRequestDto dto, CancellationToken ct)
+    {
+        var callerId = Guid.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub")
+            ?? throw new UnauthorizedAccessException());
+        if (callerId != id && !User.IsInRole("Admin")) return Forbid();
+        var db = HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+        var user = await db.Users.FindAsync([id], ct);
+        if (user is null) return NotFound();
+        user.SetAvatar(dto.AvatarBase64);
+        await db.SaveChangesAsync(ct);
+        return NoContent();
     }
 
     [HttpPut("{id:guid}/settings")]
